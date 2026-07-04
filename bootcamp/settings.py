@@ -118,6 +118,32 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://metanix.runflare.run',
+    'http://metanix.runflare.run',
+    'https://www.metanix.runflare.run',
+]
+
+# ============================================
+# لاگ CSRF برای دیباگ
+# ============================================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.security.csrf': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
 MESSAGE_TAGS = {
     messages.DEBUG: 'debug',
     messages.INFO: 'info',
