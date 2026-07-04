@@ -4,7 +4,17 @@
 {% block title %}متا آکادمی — بوت‌کمپ تابستانه پایتون{% endblock %}
 
 {% block content %}
-
+  {% if messages %}
+    <div class="messages-wrap container">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">
+          <span class="alert-icon" aria-hidden="true">{% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}!{% else %}i{% endif %}</span>
+          <span class="alert-text">{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  
   <!-- ===== هیرو ===== -->
   <section class="hero">
     <div class="container hero-grid">
