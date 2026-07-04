@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title|default:"لیست دانش‌آموزان" }} — پای‌کمپ{% endblock %}
+
+{% block content %}
+
+    {% if messages %}
+    <div class="messages-wrap container">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">
+          <span class="alert-icon" aria-hidden="true">{% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}!{% else %}i{% endif %}</span>
+          <span class="alert-text">{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+    <br><br>
+  <section class="list-section">
+    <div class="container">
+      <div class="list-header">
+        <div>
+          <p class="eyebrow"># پنل ثبت‌نام</p>
+          <h1 class="list-title">{{ title|default:"لیست دانش‌آموزان ثبت‌نام‌شده" }}</h1>
+        </div>
+        <div class="header-actions">
+          <span class="count-badge">{{ total_count }} نفر ثبت‌نام کرده‌اند</span>
+          <a href="{% url 'core:export_excel' %}" class="btn-export">
+            اکسل
+          </a>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ردیف</th>
+              <th>نام</th>
+              <th>سن</th>
+              <th>تلفن</th>
+              <th>رشته</th>
+              <th>مدرسه</th>
+              <th>شهر</th>
+              <th>معرف</th>
+              <th>تاریخ ثبت</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+            <tr>
+              <td class="cell-muted">{{ forloop.counter }}</td>
+              <td class="cell-strong">{{ student.name }}</td>
+              <td>{{ student.age }}</td>
+              <td class="cell-mono" dir="ltr">{{ student.phone_number }}</td>
+              <td><span class="badge">{{ student.reshte }}</span></td>
+              <td>{{ student.school }}</td>
+              <td>{{ student.city }}</td>
+              <td class="cell-muted">{{ student.moaref|default:"—" }}</td>
+              <td class="cell-mono cell-muted">{{ student.created_at|date:"Y/m/d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="9" class="empty-row">هنوز هیچ دانش‌آموزی ثبت‌نام نکرده است.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+{% endblock %}

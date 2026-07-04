@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}متا آکادمی — بوت‌کمپ تابستانه پایتون{% endblock %}
+
+{% block content %}
+
+  <!-- ===== هیرو ===== -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow"># ثبت‌نام تابستان 1405 باز شد</p>
+        <h1 class="hero-title">
+          این تابستون،<br>
+        کاملا  <span class="hl">رایگان</span> برنامه نویسی پایتون رو یاد بگیر 
+        </h1>
+        <p class="hero-sub">
+          تو این تابستون از صفر تا بازی‌سازی، برنامه‌نویسی پایتون رو یادمی‌گیری!<br>
+          برای اولین بار در ایران، آموزش فان با گیمیفیکیشن 
+        </p>
+        <div class="hero-actions">
+          <a href="{% url 'core:register' %}" class="btn btn-primary">ثبت‌نام در بوت‌کمپ</a>
+          <a href="#curriculum" class="btn btn-ghost">دیدن سرفصل‌ها</a>
+          <a href="#instructor" class="btn btn-ghost">مدرس</a>
+        </div>
+        <div class="hero-note">
+          <span class="dot-live" aria-hidden="true"></span>
+          رایگان به مدت محدود         
+        </div>
+        <div class="hero-note">
+          <span class="dot-live" aria-hidden="true"></span>
+          برگزاری آنلاین
+        </div>
+        <div class="hero-note">
+          <span class="dot-live" aria-hidden="true"></span>
+          مدرک معتبر از مرکز رشد دانشگاه خوارزمی
+        </div>
+        <div class="hero-note">
+          <span class="dot-live" aria-hidden="true"></span>
+          از هفته دوم مردادماه
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="terminal" role="img" aria-label="نمای شبیه‌سازی‌شده از ترمینال پایتون">
+          <div class="terminal-bar">
+            <span class="tdot tdot-r"></span>
+            <span class="tdot tdot-y"></span>
+            <span class="tdot tdot-g"></span>
+            <span class="terminal-title">python3 — متا آکادمی</span>
+          </div>
+          <div class="terminal-body" id="terminalBody" data-typed>
+            <p class="tline"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">import metaAcademy</span></p>
+            <p class="tline"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">metaAcademy.start(level="مبتدی")</span></p>
+            <p class="tline out">"سلام! آماده‌ای شش هفته کدنویسی کنیم؟ 🙂"</p>
+            <p class="tline"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">print(تهش چی میشه؟)</span></p>
+            <p class="tline out">بازی میسازیم!</p>
+            <p class="tline cursor-line"><span class="prompt">&gt;&gt;&gt;</span> <span class="caret"></span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== آمار ===== -->
+  <section class="stats">
+    <div class="container stats-grid">
+      <div class="stat-card">
+        <span class="stat-num">۶</span>
+        <span class="stat-label">هفته آموزش</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num">&#1782;</span>
+        <span class="stat-label">جلسه عملی</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num">&#1777&#1784;+</span>
+        <span class="stat-label">پروژه‌ی واقعی</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num">&#1777</span>
+        <span class="stat-label">تعداد جلسات درهفته</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== سرفصل‌ها ===== -->
+  <section class="curriculum" id="curriculum">
+    <div class="container">
+      <p class="eyebrow eyebrow-center"># سرفصل‌ها</p>
+      <h2 class="section-title">
+        دوره طوری چیده شده که مثل یک برنامه‌ی پایتون،<br class="br-desktop">
+        مرحله به مرحله اجرا می‌شه
+      </h2>
+
+      <div class="def-grid">
+        <article class="def-card">
+          <p class="def-sig"><span class="kw">فصل</span> <span class="fn">شروع طوفانی</span>():</p>
+          <p class="def-doc">مقدمات برنامه نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون.</p>
+        </article>
+
+        <article class="def-card">
+          <p class="def-sig"><span class="kw">فصل</span> <span class="fn">ساختمان های داده</span>():</p>
+          <p class="def-doc">لیست ها، دیکشنری ها،  تاپل ها، متدهای پرکاربرد هرکدوم</p>
+        </article>
+
+        <article class="def-card">
+          <p class="def-sig"><span class="kw">فصل</span> <span class="fn">کنترل جریان برنامه</span>():</p>
+          <p class="def-doc">شرط و حلقه ها، پیمایش پرسرعت، حلقه های تودرتو، دستورات مربوط به شرط و حلقه، حل مسائل منطقی</p>
+        </article>
+
+        <article class="def-card">
+          <p class="def-sig"><span class="kw">فصل</span> <span class="fn">توابع و شیءگرایی</span>():</p>
+          <p class="def-doc">تابع، ورودی و خروجی، ماژول ها، کلاس و آبجکت، شیءگرایی، ارث بری، چندریختی</p>
+        </article>
+
+        <article class="def-card def-card-wide">
+          <p class="def-sig"><span class="kw">فصل</span> <span class="fn">پروژه های واقعی با پایتون</span>():</p>
+          <p class="def-doc">مدیریت و خواندن/نوشتن فایل، مدیریت خطاها، مفهوم استثناءها و مدیریت آنها، رمزنگاری، امنیت در پایتون، بازی سازی با کتابخانه پایگیم، افزایش سطح سختی بازی، صداگذاری برای بازی، تشخیص برخورد، </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== معرفی مدرس ===== -->
+<section class="instructor" id="instructor">
+  <div class="container">
+    <p class="eyebrow eyebrow-center"># مدرس دوره</p>
+    <h2 class="section-title">
+      با مدرس دوره آشنا شوید
+    </h2>
+
+    <div class="instructor-card">
+      <div class="instructor-avatar">
+        <img src="{% static 'img/ax.png' %}" alt="مهدیار طالبی">
+      </div>
+      
+      <div class="instructor-info">
+        <h3 class="instructor-name">مهدیار طالبی</h3>
+        
+        <div class="instructor-badges">
+          <span class="badge badge-primary">دانشجوی مهندسی کامپیوتر</span>
+          <span class="badge badge-secondary">دانشگاه خوارزمی تهران</span>
+        </div>
+
+        <ul class="instructor-list">
+          <li>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+            <span>دانش‌آموخته دوره <strong>Computer Science</strong> دانشگاه هاروارد</span>
+          </li>
+          <li>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <span>رتبه <strong>۴۷</strong> المپیک برنامه‌نویسی <strong>Python/Django</strong> سال ۲۰۲۵</span>
+          </li>
+        </ul>
+
+        <div class="instructor-social">
+          <a href="https://linkedin.com/in/mahdyar-tlb" class="social-link" aria-label="لینکدین">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+          </a>
+          <a href="https://github.com/MahdyarTlb" class="social-link" aria-label="گیت‌هاب">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.468-2.38 1.235-3.22-.123-.3-.535-1.52.117-3.16 0 0 1.008-.322 3.3 1.23.96-.267 1.98-.399 3-.399s2.04.132 3 .399c2.292-1.552 3.3-1.23 3.3-1.23.653 1.64.24 2.86.118 3.16.768.84 1.233 1.91 1.233 3.22 0 4.61-2.804 5.62-5.476 5.92.43.37.824 1.102.824 2.22 0 1.602-.015 2.894-.015 3.287 0 .322.216.694.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+            </svg>
+          </a>
+          <a href="https://t.me/mahdyar_tlb" class="social-link" aria-label="تلگرام">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <!-- ===== برای چه کسانیه ===== -->
+  <section class="audience">
+    <div class="container audience-grid">
+      <div class="audience-copy">
+        <p class="eyebrow"># این بوت‌کمپ برای کیه؟</p>
+        <h2 class="section-title section-title-start">اگه یکی از این جمله‌ها حس تو رو داره...</h2>
+        <ul class="check-list">
+          <li><span class="check">✓</span> دانش‌آموزی که کنجکاو کامپیوتره</li>
+          <li><span class="check">✓</span> دانشجویی که باید مهارت تاپ روز دنیا رو یاد بگیره</li>
+          <li><span class="check">✓</span> فارغ التحصیلی که هوای یادگرفتن مهارت کرده</li>
+          <li><span class="check">✓</span> لنگ رزومه ای و یه مدرک میخوای</li>
+          <li><span class="check">✓</span> کنجکاوی که بازی سازی هم توی پایتون ممکنه!؟</li>
+        </ul>
+      </div>
+      <aside class="mini-terminal">
+        <p class="mt-line"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">metaAcademy.bootcamp</span></p>
+        <p class="mt-out">Best Bootcamp😉</p>
+        <p class="mt-line"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">bootcamp.result</span></p>
+        <p class="mt-out">"برنامه نویس پایتون"</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===== سی‌تی‌ای پایانی ===== -->
+  <section class="final-cta">
+    <div class="container final-cta-inner">
+      <p class="eyebrow eyebrow-center"># آخرین فراخوانی تابع</p>
+      <h2 class="final-cta-title">جای خالی داره پر می‌شه</h2>
+      <p class="final-cta-sub">
+        ظرفیت این دوره محدوده و آمار ثبتنام هم عجیییب بالاست!
+        همین الان ثبتنام کن که تابستون امسال رو تا عمر داری یادت بمونه!.
+      </p>
+      <a href="{% url 'core:register' %}" class="btn btn-primary btn-large">ثبت‌نام رایگان</a>
+    </div>
+  </section>
+
+{% endblock %}

@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}پای‌کمپ — بوت‌کمپ تابستانه پایتون{% endblock %}</title>
+  <meta name="description" content="بوت‌کمپ تابستانه پایتون؛ ۶ هفته آموزش عملی و پروژه‌محور برای دانش‌آموزان.">
+
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="{% url 'core:home' %}" class="logo">
+        <img src="{% static 'img/metaAcademy.png' %}" alt="متا آکادمی" class="img logo-img">
+        <p class="logo-text"><span class="hl">متا</span> آکادمی</p>
+      </a>
+
+      <nav class="main-nav" id="mainNav">
+        <a href="{% url 'core:home' %}" class="nav-link{% if request.resolver_match.url_name == 'home' %} is-active{% endif %}">خانه</a>
+        <a href="{% url 'core:register' %}" class="nav-link{% if request.resolver_match.url_name == 'register' %} is-active{% endif %}">ثبت‌نام</a>
+      </nav>
+
+      <div class="header-actions">
+        <a href="{% url 'core:register' %}" class="btn btn-primary btn-small header-cta">شروع کن</a>
+        <button class="nav-toggle" id="navToggle" aria-label="باز کردن منو" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a href="{% url 'core:home' %}" class="logo">
+          <span class="logo-mark">&gt;&gt;&gt;</span>
+          <span class="logo-text">متا آکادمی</span>
+        </a>
+        <p class="footer-tag"># کدنویسی رو خیلی فان با هم یاد می‌گیریم</p>
+      </div>
+
+      <div class="footer-links">
+        <a href="{% url 'core:home' %}">خانه</a>
+        <a href="{% url 'core:register' %}">ثبت‌نام</a>
+      </div>
+
+      <p class="footer-copy">© تابستان 1405 — متا آکادمی مستقر در خانه خلاق دانشگاه خوارزمی. تمام حقوق محفوظ است.</p>
+    </div>
+  </footer>
+
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

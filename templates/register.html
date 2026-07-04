@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ثبت‌نام — پای‌کمپ{% endblock %}
+
+{% block content %}
+    {% if messages %}
+    <div class="messages-wrap container">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">
+          <span class="alert-icon" aria-hidden="true">{% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}!{% else %}i{% endif %}</span>
+          <span class="alert-text">{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <br><br>
+  <section class="register-section">
+    <div class="container register-grid">
+
+      <aside class="register-aside">
+        <p class="eyebrow"># ثبت‌نام</p>
+        <h1 class="register-title">یک قدم تا شروعِ تابستونِ کدنویسیت</h1>
+        <p class="register-lead">
+          فرم رو کامل کن، جات رو رزرو کن. ظرفیت محدوده و ثبت‌نام‌ها به ترتیب تکمیل می‌شه.
+        </p>
+
+        <ul class="check-list">
+          <li><span class="check">✓</span> ۶ هفته آموزش عملی و پروژه‌محور</li>
+          <li><span class="check">✓</span>  گواهی پایان دوره دانشگاه خوارزمی</li>
+          <li><span class="check">✓</span> ساخت کلی پروژه‌ی واقعی برای رزومه</li>
+        </ul>
+
+        <div class="mini-terminal">
+          <p class="mt-line"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">student.status</span></p>
+          <p class="mt-out">"در انتظار تکمیل فرم..."</p>
+        </div>
+      </aside>
+
+      <div class="register-card">
+        <h2 class="form-title">فرم ثبت‌نام بوت‌کمپ</h2>
+        <p class="form-subtitle">همه‌ی فیلدها رو با دقت پر کن، همکاران ما با همین اطلاعات باهات تماس می‌گیرن.</p>
+
+        <form method="post" class="register-form" novalidate>
+          {% csrf_token %}
+          {{ form.as_p }}
+          <button type="submit" class="btn btn-primary btn-full">ثبت‌نام در بوت‌کمپ</button>
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+{% endblock %}
