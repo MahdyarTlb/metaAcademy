@@ -16,7 +16,7 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool("DEBUG", default=False)
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -107,8 +107,6 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True   
 
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
@@ -119,9 +117,6 @@ STATICFILES_DIRS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://metanix.runflare.run',
-    'http://metanix.runflare.run',
-    'https://www.metanix.runflare.run',
     'https://mtaacademy.ir',
     'http://mtaacademy.ir',
     'https://www.mtaacademy.ir',
