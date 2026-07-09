@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}ثبت‌نام — پای‌کمپ{% endblock %}
+{% block title %}ثبت‌نام — متا آکادمی{% endblock %}
 
 {% block content %}
     {% if messages %}
@@ -39,7 +39,7 @@
 
       <div class="register-card">
         <h2 class="form-title">فرم ثبت‌نام بوت‌کمپ</h2>
-        <p class="form-subtitle">همه‌ی فیلدها رو با دقت پر کن، همکاران ما با همین اطلاعات باهات تماس می‌گیرن.</p>
+        <p class="form-subtitle">همه‌ی فیلدها رو با دقت پر کن، اگه ثبتنام نهایی بشه، باید لینک گروه تلگرام رو ببینی.</p>
 
         <form method="post" class="register-form" novalidate>
           {% csrf_token %}

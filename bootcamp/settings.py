@@ -122,6 +122,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://metanix.runflare.run',
     'http://metanix.runflare.run',
     'https://www.metanix.runflare.run',
+    'https://mtaacademy.ir',
+    'http://mtaacademy.ir',
+    'https://www.mtaacademy.ir',
+    'http://www.mtaacademy.ir',
 ]
 
 # ============================================
@@ -154,3 +158,4 @@ MESSAGE_TAGS = {
 LOGIN_URL = '/admins/admin/login/'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
