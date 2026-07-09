@@ -14,3 +14,13 @@ class StudentForm(forms.ModelForm):
             'city': forms.TextInput(attrs={'class': 'form-control'}),
             'moaref': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'اختیاری'}),
         }
+
+class ExcelUploadForm(forms.Form):
+    excel_file = forms.FileField(
+        label='فایل اکسل',
+        help_text='فایل با فرمت .xlsx و شامل ستون‌های: نام, سن, تلفن, رشته, مدرسه, شهر, معرف',
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.xlsx,.xls'
+        })
+    )

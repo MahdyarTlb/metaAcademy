@@ -26,8 +26,11 @@
         <div class="header-actions">
           <span class="count-badge">{{ total_count }} نفر ثبت‌نام کرده‌اند</span>
           <a href="{% url 'core:export_excel' %}" class="btn-export">
-            اکسل
+            خروجی اکسل
           </a>
+          <a href="{% url 'core:import_excel' %}" class="btn-export" style="background: linear-gradient(135deg, #33794e, #1b8a77);">
+           ورودی اکسل
+        </a>
         </div>
       </div>
 

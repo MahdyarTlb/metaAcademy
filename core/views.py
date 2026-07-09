@@ -1,16 +1,19 @@
 from django.views.generic import TemplateView, CreateView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
-from django.urls import reverse_lazy
-from django.shortcuts import redirect
+from django.utils import timezone
+from django.core.validators import ValidationError
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import redirect, render
 from .models import Student
 from .forms import StudentForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
-from django.views.generic import ListView
 from datetime import datetime
+from .forms import ExcelUploadForm
+from django.db import IntegrityError
 
 class HomeView(TemplateView):
     template_name = 'home.html'
@@ -113,7 +116,8 @@ def export_excel(request):
         ws.cell(row=row, column=6, value=student.school).border = border
         ws.cell(row=row, column=7, value=student.city).border = border
         ws.cell(row=row, column=8, value=student.moaref or '').border = border
-        ws.cell(row=row, column=9, value=student.created_at.strftime('%Y/%m/%d %H:%M')).border = border
+        created_at_local = timezone.localtime(student.created_at)
+        ws.cell(row=row, column=9, value=created_at_local.strftime('%Y/%m/%d %H:%M')).border = border
         
         for col in range(1, 10):
             ws.cell(row=row, column=col).font = cell_font
@@ -152,3 +156,151 @@ class SuccessView(TemplateView):
         context['student_city'] = self.request.session.get('student_city', '')
         context['student_moaref'] = self.request.session.get('student_moaref', '')
         return context
+
+@staff_member_required
+def import_excel(request):
+    if request.method == 'POST':
+        form = ExcelUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            excel_file = request.FILES['excel_file']
+            
+            if not excel_file.name.endswith(('.xlsx', '.xls')):
+                messages.error(request, '❌ فرمت فایل باید .xlsx یا .xls باشد!')
+                return redirect('core:import_excel')
+            
+            try:
+                wb = openpyxl.load_workbook(excel_file)
+                ws = wb.active
+                
+                # خواندن هدرها (ردیف اول)
+                headers = [cell.value for cell in ws[1]]
+                
+                # پیدا کردن اندیس ستون‌ها
+                col_index = {}
+                for idx, header in enumerate(headers):
+                    if header:
+                        header_str = str(header).strip()
+                        if 'نام' in header_str:
+                            col_index['name'] = idx
+                        elif 'سن' in header_str:
+                            col_index['age'] = idx
+                        elif 'تلفن' in header_str or 'شماره' in header_str:
+                            col_index['phone'] = idx
+                        elif 'رشته' in header_str:
+                            col_index['reshte'] = idx
+                        elif 'مدرسه' in header_str:
+                            col_index['school'] = idx
+                        elif 'شهر' in header_str:
+                            col_index['city'] = idx
+                        elif 'معرف' in header_str:
+                            col_index['moaref'] = idx
+                        elif 'تاریخ' in header_str or 'ثبت' in header_str:
+                            col_index['created_at'] = idx
+                
+                # بررسی وجود ستون‌های ضروری
+                required = ['name', 'age', 'phone', 'reshte', 'school', 'city']
+                for field in required:
+                    if field not in col_index:
+                        messages.error(request, f'❌ ستون "{field}" در فایل پیدا نشد!')
+                        return redirect('core:import_excel')
+                
+                added_count = 0
+                error_rows = []
+                
+                # خواندن داده‌ها از ردیف دوم به بعد
+                for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                    if not row or not any(row):
+                        continue
+                    
+                    try:
+                        name = str(row[col_index['name']]).strip() if row[col_index['name']] else ''
+                        age = int(row[col_index['age']]) if row[col_index['age']] else 0
+                        phone_number = str(row[col_index['phone']]).strip() if row[col_index['phone']] else ''
+                        reshte = str(row[col_index['reshte']]).strip() if row[col_index['reshte']] else ''
+                        school = str(row[col_index['school']]).strip() if row[col_index['school']] else ''
+                        city = str(row[col_index['city']]).strip() if row[col_index['city']] else ''
+                        moaref = str(row[col_index.get('moaref')]).strip() if col_index.get('moaref') and row[col_index['moaref']] else None
+                        created_at_str = str(row[col_index.get('created_at')]).strip() if col_index.get('created_at') and row[col_index['created_at']] else None
+                        
+                        # اعتبارسنجی
+                        if not name:
+                            error_rows.append(f'ردیف {row_idx}: نام نمی‌تواند خالی باشد')
+                            continue
+                        if age < 1 or age > 120:
+                            error_rows.append(f'ردیف {row_idx}: سن باید بین 1 تا 120 باشد')
+                            continue
+                        if not phone_number or not phone_number.startswith('09') or len(phone_number) != 11:
+                            error_rows.append(f'ردیف {row_idx}: شماره تلفن باید با 09 شروع شود و 11 رقم باشد')
+                            continue
+                        if not reshte:
+                            error_rows.append(f'ردیف {row_idx}: رشته نمی‌تواند خالی باشد')
+                            continue
+                        if not school:
+                            error_rows.append(f'ردیف {row_idx}: مدرسه نمی‌تواند خالی باشد')
+                            continue
+                        if not city:
+                            error_rows.append(f'ردیف {row_idx}: شهر نمی‌تواند خالی باشد')
+                            continue
+                        
+                        # ایجاد شیء دانش‌آموز
+                        student = Student(
+                            name=name,
+                            age=age,
+                            phone_number=phone_number,
+                            reshte=reshte,
+                            school=school,
+                            city=city,
+                            moaref=moaref if moaref else None
+                        )
+                        try:
+                            student.full_clean()
+                        except ValidationError as e:
+                            error_rows.append(f'ردیف {row_idx}: خطای اعتبارسنجی - {", ".join(e.messages)}')
+                            continue
+
+                        student.save()
+                        
+                        # اگر تاریخ ثبت در فایل وجود دارد، آن را تنظیم کن
+                        if created_at_str:
+                            try:
+                                # تبدیل تاریخ از فرمت اکسل به datetime
+                                # فرمت: 2026/07/04 23:07
+                                created_at_dt = datetime.strptime(created_at_str, '%Y/%m/%d %H:%M')
+                                
+                                # اگر timezone فعال است، آن را aware کنید
+                                if timezone.is_naive(created_at_dt):
+                                    created_at_dt = timezone.make_aware(created_at_dt)
+                                
+                                # به‌روزرسانی فیلد created_at
+                                Student.objects.filter(pk=student.pk).update(created_at=created_at_dt)
+                                
+                            except ValueError as e:
+                                error_rows.append(f'ردیف {row_idx}: فرمت تاریخ صحیح نیست (مثال: 2026/07/04 23:07) - {str(e)}')
+                        
+                        added_count += 1
+                        
+                    except IntegrityError:
+                        error_rows.append(f'ردیف {row_idx}: شماره تلفن {phone_number} تکراری است')
+                    except Exception as e:
+                        error_rows.append(f'ردیف {row_idx}: خطا - {str(e)}')
+                
+                # نمایش نتیجه
+                if added_count > 0:
+                    messages.success(request, f'✅ {added_count} دانش‌آموز با موفقیت اضافه شدند!')
+                if error_rows:
+                    for error in error_rows[:5]:
+                        messages.warning(request, f'⚠️ {error}')
+                    if len(error_rows) > 5:
+                        messages.info(request, f'و {len(error_rows) - 5} خطای دیگر وجود دارد.')
+                
+                return redirect('core:students')
+                
+            except Exception as e:
+                messages.error(request, f'❌ خطا در خواندن فایل: {str(e)}')
+                return redirect('core:import_excel')
+        else:
+            messages.error(request, '❌ فرمت فایل صحیح نیست!')
+    else:
+        form = ExcelUploadForm()
+    
+    return render(request, 'import_excel.html', {'form': form})
