@@ -73,26 +73,180 @@
   </section>
 
   <!-- ===== آمار ===== -->
-  <section class="stats">
-    <div class="container stats-grid">
-      <div class="stat-card">
-        <span class="stat-num">۶</span>
-        <span class="stat-label">هفته آموزش</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-num">&#1782;</span>
-        <span class="stat-label">جلسه عملی</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-num">&#1777&#1784;+</span>
-        <span class="stat-label">پروژه‌ی واقعی</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-num">&#1777</span>
-        <span class="stat-label">تعداد جلسات درهفته</span>
-      </div>
+<section class="stats" style="position: relative; padding-top: 0">
+  <div class="container stats-grid" style="
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 16px;
+    position: relative;
+  ">
+    {# آیتم ۱ #}
+    <div class="stat-card" style="
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 16px;
+      padding: 20px 12px;
+      text-align: center;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.04)'">
+      <span class="stat-num" style="
+        display: block;
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 800;
+        color: var(--coral);
+        line-height: 1.2;
+      ">۶</span>
+      <span class="stat-label" style="
+        display: block;
+        font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+        color: var(--text-muted);
+        font-weight: 500;
+      ">هفته آموزش</span>
     </div>
-  </section>
+
+    {# آیتم ۲ #}
+    <div class="stat-card" style="
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 16px;
+      padding: 20px 12px;
+      text-align: center;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.04)'">
+      <span class="stat-num" style="
+        display: block;
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 800;
+        color: var(--coral);
+        line-height: 1.2;
+      ">۱۸+</span>
+      <span class="stat-label" style="
+        display: block;
+        font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+        color: var(--text-muted);
+        font-weight: 500;
+      ">چالش و تمرین هفتگی</span>
+    </div>
+
+    {# آیتم ۳ #}
+    <div class="stat-card" style="
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 16px;
+      padding: 20px 12px;
+      text-align: center;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.04)'">
+      <span class="stat-num" style="
+        display: block;
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 800;
+        color: var(--coral);
+        line-height: 1.2;
+      ">۱۸+</span>
+      <span class="stat-label" style="
+        display: block;
+        font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+        color: var(--text-muted);
+        font-weight: 500;
+      ">پروژه‌ی واقعی</span>
+    </div>
+
+    {# آیتم ۴ #}
+    <div class="stat-card" style="
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: 16px;
+      padding: 20px 12px;
+      text-align: center;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.04)'">
+      <span class="stat-num" style="
+        display: block;
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 800;
+        color: var(--coral);
+        line-height: 1.2;
+      ">۱</span>
+      <span class="stat-label" style="
+        display: block;
+        font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+        color: var(--text-muted);
+        font-weight: 500;
+      ">جلسه در هفته</span>
+    </div>
+
+    {# ---------- مار فانتزی (وسط، ریسپانسیو) ---------- #}
+    <img 
+      src="{% static 'img/snake.png' %}" 
+      alt="مار فانتزی متا آکادمی" 
+      style="
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: clamp(70px, 12vw, 110px);
+        height: auto;
+        object-fit: contain;
+        z-index: 10;
+        pointer-events: none;
+        filter: drop-shadow(0 8px 24px rgba(255, 107, 53, 0.35));
+        animation: float 3.5s ease-in-out infinite;
+      "
+    >
+  </div>
+</section>
+
+{# ---------- استایل‌های ریسپانسیو با مدیا کوئری ---------- #}
+<style>
+  /* انیمیشن شناور مار */
+  @keyframes float {
+    0%   { transform: translate(-50%, -50%) translateY(0px); }
+    50%  { transform: translate(-50%, -50%) translateY(-10px); }
+    100% { transform: translate(-50%, -50%) translateY(0px); }
+  }
+
+  /* ریسپانسیو برای تبلت و موبایل */
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 12px !important;
+      padding: 30px 12px !important;
+    }
+    
+    .stat-card {
+      padding: 16px 10px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      gap: 10px !important;
+      padding: 24px 10px !important;
+    }
+    
+    .stat-card {
+      padding: 14px 8px !important;
+      border-radius: 12px !important;
+    }
+  }
+</style>
+
+{# ---------- انیمیشن شناور مار ---------- #}
+<style>
+  @keyframes float {
+    0%   { transform: translate(-50%, -50%) translateY(0px); }
+    50%  { transform: translate(-50%, -50%) translateY(-10px); }
+    100% { transform: translate(-50%, -50%) translateY(0px); }
+  }
+</style>
 
   <!-- ===== سرفصل‌ها ===== -->
   <section class="curriculum" id="curriculum">
