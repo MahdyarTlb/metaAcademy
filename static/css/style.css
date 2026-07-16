@@ -1627,6 +1627,7 @@ button { font-family: inherit; }
   justify-content: center;
 }
 
+.check-field input,
 .check-field .check-input {
   flex: 1 1 240px;
   background: var(--surface-2);
@@ -1720,6 +1721,11 @@ button { font-family: inherit; }
   .check-field .check-input { width: 100%; text-align: center; }
   .check-submit-btn { width: 100%; justify-content: center; }
 
+.check-field input{
+    height:52px !important;
+    min-height:52px !important;
+    max-height:52px !important;
+}
   .check-card { padding: 20px 14px; }
   .check-info-grid {
     grid-template-columns: 1fr;
