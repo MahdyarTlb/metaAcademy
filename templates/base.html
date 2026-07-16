@@ -23,6 +23,7 @@
       <nav class="main-nav" id="mainNav">
         <a href="{% url 'core:home' %}" class="nav-link{% if request.resolver_match.url_name == 'home' %} is-active{% endif %}">خانه</a>
         <a href="{% url 'core:register' %}" class="nav-link{% if request.resolver_match.url_name == 'register' %} is-active{% endif %}">ثبت‌نام</a>
+        <a href="{% url 'core:check_view' %}" class="nav-link{% if request.resolver_match.url_name == 'check' %} is-active{% endif %}">وضعیت ثبت‌نام</a>
       </nav>
 
       <div class="header-actions">

@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView, CreateView, ListView
+from django.views.generic import TemplateView, CreateView, ListView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.utils import timezone
@@ -12,7 +12,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
-from .forms import ExcelUploadForm
+from .forms import ExcelUploadForm, CheckForm
 from django.db import IntegrityError
 
 class HomeView(TemplateView):
@@ -69,7 +69,30 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset
-    
+
+class CheckView(View):
+    template_name = 'check.html'
+
+    def get(self, request):
+        form = CheckForm()
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request):
+        form = CheckForm(request.POST)
+        context = {'form': form}
+
+        if form.is_valid():
+            phone = form.cleaned_data['phone']
+            try:
+                student = Student.objects.get(phone_number=phone)
+                context['student'] = student
+                context['found'] = True
+            except Student.DoesNotExist:
+                context['found'] = False
+                context['error'] = 'هیچ ثبت‌نامی با این شماره پیدا نشد، با پشتیبانی ارتباط برقرار کنید'
+
+        return render(request, self.template_name, context)
+        
 @staff_member_required
 def export_excel(request):
     """
@@ -148,13 +171,13 @@ class SuccessView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['student_name'] = self.request.session.get('student_name', '')
-        context['student_age'] = self.request.session.get('student_age', '')
-        context['student_phone'] = self.request.session.get('student_phone', '')
-        context['student_reshte'] = self.request.session.get('student_reshte', '')
-        context['student_school'] = self.request.session.get('student_school', '')
-        context['student_city'] = self.request.session.get('student_city', '')
-        context['student_moaref'] = self.request.session.get('student_moaref', '')
+        context['name'] = self.request.session.get('student_name', '')
+        context['age'] = self.request.session.get('student_age', '')
+        context['phone'] = self.request.session.get('student_phone', '')
+        context['reshte'] = self.request.session.get('student_reshte', '')
+        context['school'] = self.request.session.get('student_school', '')
+        context['city'] = self.request.session.get('student_city', '')
+        context['moaref'] = self.request.session.get('student_moaref', '')
         return context
 
 @staff_member_required

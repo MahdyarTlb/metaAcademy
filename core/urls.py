@@ -10,4 +10,5 @@ urlpatterns = [
     path('export-excel/', views.export_excel, name='export_excel'),
     path('success/', views.SuccessView.as_view(), name='success'),
     path('import-excel/', views.import_excel, name='import_excel'),
+    path('check/', views.CheckView.as_view(), name='check_view'),
 ]

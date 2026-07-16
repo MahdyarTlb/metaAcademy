@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}پنل کاربری | متا آکادمی{% endblock %}
+
+{% block content %}
+<section class="check-section">
+  <div class="check-container">
+
+    {# ---------- هدر پنل ---------- #}
+    <div class="check-panel-header">
+      <div class="check-panel-title">
+        🐍 <span class="greeting">پنل کاربری</span>
+      </div>
+      <div>
+        {% if found and student %}
+          <span class="user-status-badge">✅ ثبت‌نام تکمیل شده</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ---------- فرم جستجو (اگر هنوز نتیجه‌ای پیدا نشده) ---------- #}
+    {% if found is None %}
+    <div class="check-form-wrap">
+      <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 1.02rem;">
+        شماره موبایل خود را وارد کنید تا اطلاعات ثبت‌نام شما نمایش داده شود.
+      </p>
+      <form method="post" class="check-form">
+        {% csrf_token %}
+        <div class="check-field">
+          {{ form.phone }}
+          <button type="submit" class="btn btn-primary check-submit-btn">
+            🔍 بررسی
+          </button>
+        </div>
+        {% if form.errors %}
+          <div class="check-error-msg">{{ form.errors }}</div>
+        {% endif %}
+      </form>
+    </div>
+    {% endif %}
+
+    {# ---------- نمایش نتیجه ---------- #}
+    {% if found is not None %}
+      <div class="check-panel-grid">
+
+        {# ========== ستون چپ: اطلاعات کاربری ========== #}
+        <div>
+          {% if found and student %}
+            <div class="check-card">
+              <div class="card-title"><span class="icon">👤</span> اطلاعات ثبت‌نام</div>
+
+              <div class="check-info-grid" style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-alt); border-radius: var(--radius-sm); padding: 18px 16px; border: 1px solid var(--border-soft); margin-bottom: 20px;">
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">نام</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.name|default:"—" }}</strong>
+                </div>
+                
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">سن</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.age|default:"—" }}</strong>
+                </div>
+                
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">تلفن</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem; direction: ltr;">{{ student.phone_number|default:"—" }}</strong>
+                </div>
+                
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">رشته/پایه</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.reshte|default:"—" }}</strong>
+                </div>
+                
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">دانشگاه/مدرسه</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.school|default:"—" }}</strong>
+                </div>
+                
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">شهر</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.city|default:"—" }}</strong>
+                </div>
+                
+                {% if student.moaref %}
+                  <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                    <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">معرف</span>
+                    <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.moaref }}</strong>
+                  </div>
+                {% endif %}
+              </div>
+
+              {# ---------- لینک کانال‌ها ---------- #}
+              <div class="check-channels">
+                <p class="channels-label">📢 کانال‌های اطلاع‌رسانی:</p>
+                <div class="channels-list">
+                  <div class="channel-box">
+                    <span class="channel-badge telegram">تلگرام</span>
+                    <a href="https://t.me/metanix_ir" target="_blank" class="channel-link">@metanix_ir</a>
+                  </div>
+                  <div class="channel-box">
+                    <span class="channel-badge bale">بله</span>
+                    <a href="https://ble.ir/metanix_ir" target="_blank" class="channel-link">@metanix_ir</a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="check-channels">
+                <p class="channels-label">💬 گروه کامیونیتی (لینک کلاس‌ها):</p>
+                <div class="channels-list">
+                  <div class="channel-box">
+                    <span class="channel-badge telegram">تلگرام</span>
+                    <a href="https://t.me/+yveknXGvCeVjZTM0" target="_blank" class="channel-link">t.me/+yveknXGvCeVjZTM0</a>
+                  </div>
+                  <div class="channel-box">
+                    <span class="channel-badge bale">بله</span>
+                    <a href="https://ble.ir/join/3epYFVD6UX" target="_blank" class="channel-link">ble.ir/join/3epYFVD6UX</a>
+                  </div>
+                </div>
+              </div>
+
+              {# ---------- دکمه‌های اقدام ---------- #}
+              <div class="check-actions">
+                <button class="btn btn-secondary check-action-btn" disabled>
+                  📜 دریافت مدرک <span class="soon-badge">به زودی</span>
+                </button>
+                <button class="btn btn-primary check-action-btn" disabled>
+                  🚀 شروع کلاس <span class="soon-badge">به زودی</span>
+                </button>
+                <a href="{% url 'core:success' %}" class="btn btn-ghost check-action-btn" style="flex:0 0 auto;">
+                  📋 صفحه ثبت‌نام موفق
+                </a>
+              </div>
+            </div>
+          {% else %}
+            {# ---------- خطا: ثبت‌نام پیدا نشد ---------- #}
+            <div class="check-card check-error-card">
+              <div class="status-badge status-error">❌ ثبت‌نام یافت نشد</div>
+              <p style="color: var(--text); font-size: 1.05rem; margin-bottom: 6px;">
+                {{ error|default:"شماره موبایل وارد شده در سامانه وجود ندارد." }}
+              </p>
+              <p class="check-error-hint">
+                اگر ازطریق پیوی پشتیبانی ثبت نام کرده اید، ممکن است طول بکشد. همچنین می‌توانید با پشتیبانی تماس بگیرید.
+              </p>
+              <a href="{% url 'core:check_view' %}" class="btn btn-ghost" style="margin-top: 16px;">
+                🔄 دوباره امتحان کنید
+              </a>
+            </div>
+          {% endif %}
+        </div>
+
+        {# ========== ستون راست: مار فانتزی + اطلاعات جانبی ========== #}
+        <div class="check-sidebar" style="display: flex; flex-direction: column; gap: 24px;">
+          {# ---------- کارت مار ---------- #}
+          <div class="mascot-card">
+            <img 
+              src="{% static 'img/snake.png' %}" 
+              alt="مار فانتزی متا آکادمی" 
+              class="mascot-image"
+              loading="lazy"
+            >
+            <div class="mascot-title">🐍 متا آکادمی</div>
+            <div class="mascot-sub">همراه شما در مسیر کدنویسی</div>
+          </div>
+
+          {# ---------- کارت وضعیت کلاس‌ها ---------- #}
+          <div class="check-card" style="background: var(--surface);">
+            <div class="card-title"><span class="icon">📅</span> وضعیت کلاس‌ها</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm); border-right: 3px solid var(--mint);">
+                <span style="color: var(--text-muted);">جلسه پیش‌نیاز</span>
+                <span style="font-weight: 700; color: var(--mint);">۱۲ مرداد</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm); border-right: 3px solid var(--gold);">
+                <span style="color: var(--text-muted);">جلسه ۱ (آنلاین)</span>
+                <span style="font-weight: 700; color: var(--gold);">۱۹ مرداد</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm); border-right: 3px solid var(--gold);">
+                <span style="color: var(--text-muted);">جلسه ۲ (آنلاین)</span>
+                <span style="font-weight: 700; color: var(--gold);">۲۶ مرداد</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm); border-right: 3px solid var(--gold);">
+                <span style="color: var(--text-muted);">جلسه ۳ (آنلاین)</span>
+                <span style="font-weight: 700; color: var(--gold);">۲ شهریور</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm); border-right: 3px solid var(--gold);">
+                <span style="color: var(--text-muted);">جلسه ۴ (آنلاین)</span>
+                <span style="font-weight: 700; color: var(--gold);">۹ شهریور</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm); border-right: 3px solid var(--gold);">
+                <span style="color: var(--text-muted);">جلسه ۵ (آنلاین)</span>
+                <span style="font-weight: 700; color: var(--gold);">۱۶ شهریور</span>
+              </div>
+            </div>
+            <p style="color: var(--text-faint); font-size: 0.8rem; margin-top: 12px; text-align: center;">
+              ⏰ جلسات آنلاین هر <strong>دوشنبه</strong> برگزار می‌شود.
+            </p>
+          </div>
+        </div>
+
+        {# ========== ردیف پایین: رودمپ دوره (تمام عرض) ========== #}
+        <div class="roadmap-card check-card">
+          <div class="roadmap-header">
+            <div class="roadmap-title">🗺️ <span>رودمپ دوره</span></div>
+            <div class="roadmap-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <a href="{% url 'core:home' %}#curriculum" class="btn btn-ghost roadmap-btn">📋 سرفصل‌ها</a>
+              <a href="{% url 'core:home' %}#instructor" class="btn btn-primary roadmap-btn" style="padding: 10px 20px; font-size: 0.85rem;">مدرس دوره</a>
+            </div>
+          </div>
+
+          <div class="roadmap-timeline">
+            {# آیتم ۱: پیش‌نیاز #}
+            <div class="roadmap-item">
+              <div class="roadmap-dot completed"></div>
+              <div class="roadmap-content">
+                <div class="roadmap-date">📆 ۱۲ مرداد</div>
+                <div class="roadmap-label">
+                  <span class="roadmap-badge done">✓ نزدیک</span>
+                  جلسه پیش‌نیاز (آشنایی با مبانی)
+                </div>
+                <div class="roadmap-desc">آشنایی با مسیر دوره، رسالت برنامه نویسی، الگوریتم چیست؟ و مقدمات</div>
+              </div>
+            </div>
+
+            {# آیتم ۲: جلسه ۱ #}
+            <div class="roadmap-item">
+              <div class="roadmap-dot upcoming"></div>
+              <div class="roadmap-content">
+                <div class="roadmap-date">📆 ۱۹ مرداد</div>
+                <div class="roadmap-label">
+                  <span class="roadmap-badge soon">به زودی</span>
+                  جلسه ۱: شروع طوفانی
+                </div>
+                <div class="roadmap-desc">مقدمات برنامه نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون</div>
+              </div>
+            </div>
+
+            {# آیتم ۳: جلسه ۲ #}
+            <div class="roadmap-item">
+              <div class="roadmap-dot upcoming"></div>
+              <div class="roadmap-content">
+                <div class="roadmap-date">📆 ۲۶ مرداد</div>
+                <div class="roadmap-label">
+                  <span class="roadmap-badge soon">به زودی</span>
+                  جلسه ۲: ساختمان های داده
+                </div>
+                <div class="roadmap-desc">لیست ها، دیکشنری ها،  تاپل ها، متدهای پرکاربرد هرکدوم</div>
+              </div>
+            </div>
+
+            {# آیتم ۴: جلسه ۳ #}
+            <div class="roadmap-item">
+              <div class="roadmap-dot upcoming"></div>
+              <div class="roadmap-content">
+                <div class="roadmap-date">📆 ۲ شهریور</div>
+                <div class="roadmap-label">
+                  <span class="roadmap-badge soon">به زودی</span>
+                  جلسه ۳: کنترل جریان برنامه
+                </div>
+                <div class="roadmap-desc">شرط و حلقه ها، پیمایش پرسرعت، حلقه های تودرتو، دستورات مربوط به شرط و حلقه، حل مسائل منطقی</div>
+              </div>
+            </div>
+
+            {# آیتم ۵: جلسه ۴ #}
+            <div class="roadmap-item">
+              <div class="roadmap-dot upcoming"></div>
+              <div class="roadmap-content">
+                <div class="roadmap-date">📆 ۹ شهریور</div>
+                <div class="roadmap-label">
+                  <span class="roadmap-badge soon">به زودی</span>
+                  جلسه ۴: توابع و شیءگرایی
+                </div>
+                <div class="roadmap-desc">تابع، ورودی و خروجی، ماژول ها، کلاس و آبجکت، شیءگرایی، ارث بری، چندریختی</div>
+              </div>
+            </div>
+
+            {# آیتم ۶: جلسه ۵ #}
+            <div class="roadmap-item">
+              <div class="roadmap-dot upcoming"></div>
+              <div class="roadmap-content">
+                <div class="roadmap-date">📆 ۱۶ شهریور</div>
+                <div class="roadmap-label">
+                  <span class="roadmap-badge soon">به زودی</span>
+                  جلسه ۵: پروژه های واقعی با پایتون
+                </div>
+                <div class="roadmap-desc">مدیریت و خواندن/نوشتن فایل، مدیریت خطاها، مفهوم استثناءها و مدیریت آنها، رمزنگاری، امنیت در پایتون، بازی سازی با کتابخانه پایگیم، افزایش سطح سختی بازی، صداگذاری برای بازی، تشخیص برخورد</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

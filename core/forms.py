@@ -24,3 +24,14 @@ class ExcelUploadForm(forms.Form):
             'accept': '.xlsx,.xls'
         })
     )
+    
+class CheckForm(forms.Form):
+    phone = forms.CharField(
+        label='شماره موبایل',
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            'placeholder': '(فقط با اعداد انگلیسی) ۰۹۱۲۳۴۵۶۷۸۹',
+            'dir': 'ltr',
+            'class': 'check-input',
+        })
+    )

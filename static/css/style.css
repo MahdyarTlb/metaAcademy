@@ -1141,12 +1141,610 @@ button { font-family: inherit; }
     margin-bottom: 25px;
 }
 
-/* .count-badge {
-    display: inline-block;
-    padding: 6px 16px;
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 500;
-} */
+/* ==========================================================================
+   پنل کاربری (صفحه بررسی وضعیت ثبت‌نام)
+   ========================================================================== */
+
+/* ------ بخش کلی ------ */
+.check-section {
+  padding-block: 40px 60px;
+  min-height: 90vh;
+  background: var(--bg);
+}
+
+.check-container {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+/* ==========================================================================
+   رودمپ - دکمه‌های کنار هم
+   ========================================================================== */
+
+.roadmap-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.roadmap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* اگر می‌خواهید دکمه‌ها دقیقاً کنار هم باشند و به راست چین شوند */
+.roadmap-actions .btn {
+  white-space: nowrap;
+}
+
+/* ریسپانسیو: در موبایل دکمه‌ها به صورت ستونی */
+@media (max-width: 480px) {
+  .roadmap-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .roadmap-actions {
+    width: 100%;
+  }
+  
+  .roadmap-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+/* ------ هدر پنل ------ */
+.check-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.check-panel-title {
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.check-panel-title .greeting {
+  color: var(--coral);
+}
+
+.user-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--mint-soft);
+  color: var(--mint);
+  border: 1px solid rgba(94, 234, 212, 0.25);
+}
+
+/* ------ گرید اصلی پنل ------ */
+.check-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* ------ کارت اطلاعات کاربری ------ */
+.check-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.check-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.card-title .icon {
+  font-size: 1.3rem;
+}
+
+/* اطلاعات کاربر */
+.check-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  background: var(--bg-alt);
+  border-radius: var(--radius-sm);
+  padding: 18px 16px;
+  border: 1px solid var(--border-soft);
+  margin-bottom: 20px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.92rem;
+  flex-wrap: wrap;
+}
+
+.info-full {
+  grid-column: span 2;
+}
+
+.info-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.info-item strong {
+  color: var(--text);
+  font-weight: 700;
+  text-align: left;
+  direction: ltr;
+}
+
+/* لینک‌های کانال */
+.check-channels {
+  margin-top: 20px;
+}
+
+.channels-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.channels-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.channel-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  flex: 1 1 auto;
+  min-width: 140px;
+  transition: border-color 0.2s;
+}
+
+.channel-box:hover {
+  border-color: var(--coral);
+}
+
+.channel-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.channel-badge.telegram { background: #0d8a84; }
+.channel-badge.bale { background: #1b974b; }
+
+.channel-link {
+  color: var(--coral);
+  font-weight: 500;
+  text-decoration: none;
+  font-size: 0.82rem;
+  direction: ltr;
+  transition: color 0.15s;
+}
+
+.channel-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* دکمه‌های اقدام */
+.check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.check-action-btn {
+  position: relative;
+  padding: 12px 28px;
+  min-width: 160px;
+  justify-content: center;
+  font-size: 0.92rem;
+  flex: 1 1 auto;
+}
+
+.check-action-btn:disabled {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+  cursor: not-allowed;
+}
+
+.soon-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-right: 6px;
+  color: var(--text-faint);
+  border: 1px solid var(--border-soft);
+}
+
+/* ------ کارت مار فانتزی (سمت راست) ------ */
+.mascot-card {
+  background: linear-gradient(145deg, var(--surface), var(--bg-alt));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.mascot-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 40%, rgba(255, 138, 92, 0.06), transparent 60%);
+  pointer-events: none;
+}
+
+.mascot-image {
+  width: 140px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 16px 40px rgba(255, 138, 92, 0.35));
+  animation: float 4s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+.mascot-image:hover {
+  transform: scale(1.06) rotate(-3deg);
+}
+
+.mascot-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--coral);
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.mascot-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  position: relative;
+  z-index: 1;
+}
+
+/* ------ کارت رودمپ دوره ------ */
+.roadmap-card {
+  grid-column: span 2;
+  margin-top: 8px;
+}
+
+.roadmap-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.roadmap-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roadmap-btn {
+  font-size: 0.85rem;
+  padding: 10px 24px;
+}
+
+/* تایم‌لاین رودمپ */
+.roadmap-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-right: 24px;
+}
+
+.roadmap-timeline::before {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--coral), var(--mint), var(--coral));
+  opacity: 0.3;
+}
+
+.roadmap-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-soft);
+  position: relative;
+}
+
+.roadmap-item:last-child {
+  border-bottom: none;
+}
+
+.roadmap-dot {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--coral);
+  margin-top: 4px;
+  box-shadow: 0 0 0 4px var(--coral-soft);
+  position: relative;
+  z-index: 1;
+}
+
+.roadmap-dot.completed {
+  background: var(--mint);
+  box-shadow: 0 0 0 4px var(--mint-soft);
+}
+
+.roadmap-dot.upcoming {
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(255, 200, 87, 0.25);
+}
+
+.roadmap-content {
+  flex: 1;
+}
+
+.roadmap-date {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  font-weight: 500;
+  direction: ltr;
+  display: inline-block;
+  background: var(--bg-alt);
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
+
+.roadmap-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.roadmap-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.roadmap-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 12px;
+  border-radius: 999px;
+  margin-right: 8px;
+}
+
+.roadmap-badge.soon {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+
+.roadmap-badge.done {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+/* ------ فرم جستجو (قبل از نمایش نتیجه) ------ */
+.check-form-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 32px 28px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 32px;
+  max-width: 600px;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.check-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.check-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-field .check-input {
+  flex: 1 1 240px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  direction: ltr;
+  text-align: center;
+}
+
+.check-field .check-input:focus {
+  outline: none;
+  border-color: var(--coral);
+  box-shadow: 0 0 0 3px var(--coral-soft);
+}
+
+.check-submit-btn {
+  padding: 14px 40px;
+  font-size: 1rem;
+}
+
+.check-error-msg {
+  color: var(--danger);
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  background: var(--danger-soft);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 122, 122, 0.3);
+  margin-top: 8px;
+}
+
+/* ------ پیام خطا (وقتی ثبت‌نام پیدا نشد) ------ */
+.check-error-card {
+  text-align: center;
+  padding: 48px 28px;
+}
+
+.check-error-card .status-badge {
+  margin-bottom: 16px;
+}
+
+.check-error-hint {
+  color: var(--text-faint);
+  font-size: 0.92rem;
+  margin-top: 6px;
+}
+
+/* ===== ریسپانسیو ===== */
+@media (max-width: 992px) {
+  .check-panel-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .roadmap-card {
+    grid-column: span 1;
+  }
+
+  .mascot-card {
+    min-height: 200px;
+    padding: 24px;
+  }
+
+  .mascot-image {
+    width: 100px;
+  }
+}
+
+@media (max-width: 640px) {
+  .check-section { padding-block: 24px 40px; }
+
+  .check-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .check-panel-title { font-size: 1.3rem; }
+
+  .check-form-wrap { padding: 20px 16px; }
+
+  .check-field {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .check-field .check-input { width: 100%; text-align: center; }
+  .check-submit-btn { width: 100%; justify-content: center; }
+
+  .check-card { padding: 20px 14px; }
+  .check-info-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+  .info-full { grid-column: span 1; }
+
+  .channels-list { flex-direction: column; }
+  .channel-box { min-width: unset; }
+
+  .check-actions { flex-direction: column; }
+  .check-action-btn { width: 100%; min-width: unset; }
+
+  .mascot-image { width: 80px; }
+  .mascot-card { min-height: 160px; padding: 20px; }
+
+  .roadmap-item { padding: 12px 0; }
+  .roadmap-timeline { padding-right: 16px; }
+  .roadmap-timeline::before { right: 4px; }
+  .roadmap-dot { width: 12px; height: 12px; }
+}
+
+@media (max-width: 400px) {
+  .check-panel-title { font-size: 1.1rem; }
+  .user-status-badge { font-size: 0.7rem; padding: 4px 12px; }
+  .roadmap-label { font-size: 0.9rem; }
+}

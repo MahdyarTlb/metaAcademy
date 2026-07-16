@@ -83,7 +83,7 @@
           margin-bottom: 22px;
           font-weight: 400;
         ">
-          {{ student_name|default:"دانش‌آموز گرامی" }}، ثبت‌نام شما در بوتکمپ تابستانه تکمیل شد.
+          {{ name|default:"دانش‌آموز گرامی" }}، ثبت‌نام شما در بوتکمپ تابستانه تکمیل شد.
         </p>
 
         {# خلاصه مشخصات (با هایلایت رنگی) #}
@@ -105,44 +105,44 @@
             <div>
               <span style="color: var(--text-muted); font-size: 0.8rem;">نام</span>
               <strong style="display: inline-block; margin-right: 4px; color: var(--coral);">
-                {{ student_name|default:"—" }}
+                {{ name|default:"—" }}
               </strong>
             </div>
             <div>
               <span style="color: var(--text-muted); font-size: 0.8rem;">سن</span>
               <strong style="display: inline-block; margin-right: 4px; color: var(--coral);">
-                {{ student_age|default:"—" }}
+                {{ age|default:"—" }}
               </strong>
             </div>
             <div>
               <span style="color: var(--text-muted); font-size: 0.8rem;">تلفن</span>
               <strong style="display: inline-block; margin-right: 4px; color: var(--coral);" dir="ltr">
-                {{ student_phone|default:"—" }}
+                {{ phone|default:"—" }}
               </strong>
             </div>
             <div>
               <span style="color: var(--text-muted); font-size: 0.8rem;">رشته/پایه</span>
               <strong style="display: inline-block; margin-right: 4px; color: var(--coral);">
-                {{ student_reshte|default:"—" }}
+                {{ reshte|default:"—" }}
               </strong>
             </div>
             <div style="grid-column: span 2;">
               <span style="color: var(--text-muted); font-size: 0.8rem;">دانشگاه/مدرسه</span>
               <strong style="display: inline-block; margin-right: 4px; color: var(--coral);">
-                {{ student_school|default:"—" }}
+                {{ school|default:"—" }}
               </strong>
             </div>
             <div style="grid-column: span 2;">
               <span style="color: var(--text-muted); font-size: 0.8rem;">شهر</span>
               <strong style="display: inline-block; margin-right: 4px; color: var(--coral);">
-                {{ student_city|default:"—" }}
+                {{ city|default:"—" }}
               </strong>
             </div>
-            {% if student_moaref %}
+            {% if moaref %}
               <div style="grid-column: span 2;">
                 <span style="color: var(--text-muted); font-size: 0.8rem;">معرف</span>
                 <strong style="display: inline-block; margin-right: 4px; color: var(--coral);">
-                  {{ student_moaref }}
+                  {{ moaref }}
                 </strong>
               </div>
             {% endif %}
