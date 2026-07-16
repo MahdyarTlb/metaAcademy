@@ -86,13 +86,36 @@ class CheckView(View):
             try:
                 student = Student.objects.get(phone_number=phone)
                 context['student'] = student
+
+                request.session['student_name'] = student.name
+                request.session['student_age'] = student.age
+                request.session['student_phone'] = student.phone_number
+                request.session['student_reshte'] = student.reshte
+                request.session['student_school'] = student.school
+                request.session['student_city'] = student.city
+                request.session['student_moaref'] = student.moaref
+                
                 context['found'] = True
             except Student.DoesNotExist:
                 context['found'] = False
                 context['error'] = 'هیچ ثبت‌نامی با این شماره پیدا نشد، با پشتیبانی ارتباط برقرار کنید'
 
         return render(request, self.template_name, context)
-        
+
+class SuccessView(TemplateView):
+    template_name = 'success.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['name'] = self.request.session.get('student_name', '')
+        context['age'] = self.request.session.get('student_age', '')
+        context['phone'] = self.request.session.get('student_phone', '')
+        context['reshte'] = self.request.session.get('student_reshte', '')
+        context['school'] = self.request.session.get('student_school', '')
+        context['city'] = self.request.session.get('student_city', '')
+        context['moaref'] = self.request.session.get('student_moaref', '')
+        return context
+
 @staff_member_required
 def export_excel(request):
     """
@@ -165,20 +188,6 @@ def export_excel(request):
     
     wb.save(response)
     return response
-
-class SuccessView(TemplateView):
-    template_name = 'success.html'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['name'] = self.request.session.get('student_name', '')
-        context['age'] = self.request.session.get('student_age', '')
-        context['phone'] = self.request.session.get('student_phone', '')
-        context['reshte'] = self.request.session.get('student_reshte', '')
-        context['school'] = self.request.session.get('student_school', '')
-        context['city'] = self.request.session.get('student_city', '')
-        context['moaref'] = self.request.session.get('student_moaref', '')
-        return context
 
 @staff_member_required
 def import_excel(request):
