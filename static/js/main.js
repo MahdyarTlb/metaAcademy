@@ -1,5 +1,3 @@
-// پای‌کمپ — رفتارهای سبک رابط کاربری (بدون وابستگی به فریمورک)
-
 document.addEventListener('DOMContentLoaded', function () {
   var toggle = document.getElementById('navToggle');
   var nav = document.getElementById('mainNav');

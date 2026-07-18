@@ -301,7 +301,7 @@ button { font-family: inherit; }
 
 .nav-toggle span {
   height: 2px;
-  background: var(--text);
+  background: #f6f1e7;
   border-radius: 2px;
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
