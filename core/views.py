@@ -246,7 +246,7 @@ def import_excel(request):
                     
                     try:
                         name = str(row[col_index['name']]).strip() if row[col_index['name']] else ''
-                        age = int(row[col_index['age']]) if row[col_index['age']] else 0
+                        age = int(row[col_index['age']]) if row[col_index['age']] else None
                         phone_number = str(row[col_index['phone']]).strip() if row[col_index['phone']] else ''
                         reshte = str(row[col_index['reshte']]).strip() if row[col_index['reshte']] else ''
                         school = str(row[col_index['school']]).strip() if row[col_index['school']] else ''
@@ -258,11 +258,11 @@ def import_excel(request):
                         if not name:
                             error_rows.append(f'ردیف {row_idx}: نام نمی‌تواند خالی باشد')
                             continue
-                        if age is None or age == '':
+                        if age is None:
                             age = 1
                         else:
                             try:
-                                age = int(age)  # تبدیل به عدد
+                                age = int(age)
                                 if age < 1 or age > 120:
                                     error_rows.append(f'ردیف {row_idx}: سن باید بین 1 تا 120 باشد')
                                     continue
@@ -278,11 +278,9 @@ def import_excel(request):
                             error_rows.append(f'ردیف {row_idx}: شماره تلفن باید با 09 شروع شود و 11 رقم باشد')
                             continue
                         if not reshte:
-                            error_rows.append(f'ردیف {row_idx}: رشته نمی‌تواند خالی باشد')
-                            continue
+                            reshte = 'ثبت نشده'
                         if not school:
-                            error_rows.append(f'ردیف {row_idx}: مدرسه نمی‌تواند خالی باشد')
-                            continue
+                            school = 'ثبت نشده'
                         if not city:
                             city = 'ثبت نشده'
                         
@@ -348,3 +346,4 @@ def import_excel(request):
         form = ExcelUploadForm()
     
     return render(request, 'import_excel.html', {'form': form})
+
