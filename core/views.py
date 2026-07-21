@@ -258,9 +258,22 @@ def import_excel(request):
                         if not name:
                             error_rows.append(f'ردیف {row_idx}: نام نمی‌تواند خالی باشد')
                             continue
-                        if age < 1 or age > 120:
-                            error_rows.append(f'ردیف {row_idx}: سن باید بین 1 تا 120 باشد')
-                            continue
+                        if age is None or age == '':
+                            age = 1
+                        else:
+                            try:
+                                age = int(age)  # تبدیل به عدد
+                                if age < 1 or age > 120:
+                                    error_rows.append(f'ردیف {row_idx}: سن باید بین 1 تا 120 باشد')
+                                    continue
+                            except (ValueError, TypeError):
+                                error_rows.append(f'ردیف {row_idx}: سن باید عدد باشد')
+                                continue
+                        # شماره تلفن - تبدیل به رشته و استانداردسازی
+                        phone_number = str(phone_number).strip() if phone_number else ''
+                        # اگر با 0 شروع نمی‌شه و 10 رقمه، 0 رو اولش بذار
+                        if phone_number and not phone_number.startswith('0') and len(phone_number) == 10:
+                            phone_number = '0' + phone_number
                         if not phone_number or not phone_number.startswith('09') or len(phone_number) != 11:
                             error_rows.append(f'ردیف {row_idx}: شماره تلفن باید با 09 شروع شود و 11 رقم باشد')
                             continue
@@ -271,8 +284,7 @@ def import_excel(request):
                             error_rows.append(f'ردیف {row_idx}: مدرسه نمی‌تواند خالی باشد')
                             continue
                         if not city:
-                            error_rows.append(f'ردیف {row_idx}: شهر نمی‌تواند خالی باشد')
-                            continue
+                            city = 'ثبت نشده'
                         
                         # ایجاد شیء دانش‌آموز
                         student = Student(

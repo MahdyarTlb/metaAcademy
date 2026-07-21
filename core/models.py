@@ -9,7 +9,7 @@ class Student(models.Model):
     
     age = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(99)],
-        verbose_name='سن'
+        verbose_name='سن',
     )
     
     phone_number = models.CharField(
