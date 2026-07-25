@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator, EmailValidator
 
 class Student(models.Model):
     name = models.CharField(
@@ -17,11 +17,20 @@ class Student(models.Model):
         validators=[
             RegexValidator(
                 regex=r'^09\d{9}$',
-                message='شماره تلفن باید با 09 شروع شود و 11 رقم باشد'
+                message='شماره تلفن صحیح نیست، حتما با اعداد انگلیسی وارد کنید.'
             )
         ],
         unique=True,
         verbose_name='شماره تلفن'
+    )
+    
+    email = models.EmailField(unique=True, null=True, blank=True, verbose_name="ایمیل", validators=[EmailValidator(message='ایمیل وارد شده صحیح نیست')])
+    
+    password = models.CharField(
+        max_length=128,
+        blank=True,
+        null=True,
+        verbose_name='رمز عبور'
     )
     
     reshte = models.CharField(

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}جلسه پیش‌نیاز (حضوری) | متا آکادمی{% endblock %}
+
+{% block content %}
+<section class="check-section">
+  <div class="check-container">
+
+    <div class="class-topbar">
+      <a href="{% url 'core:check_view' %}" class="class-back-link">→ بازگشت به پنل کاربری</a>
+    </div>
+
+    <div class="class-hero class-hero-offline">
+      <span class="class-hero-mode offline">🏫 آفلاین</span>
+      <h1 class="class-hero-title">جلسه پیش‌نیاز: آشنایی با مبانی</h1>
+      <p class="class-hero-sub">
+        این جلسه به‌صورت آفلاین برگزار می‌شود و مخصوص آشنایی شما با مسیر دوره، رسالت برنامه‌نویسی و مفهوم الگوریتم است.
+      </p>
+      <div class="class-hero-meta">
+        <div class="class-meta-item">
+          <span class="meta-icon">📆</span>
+          <div>
+            <div class="meta-label">تاریخ برگزاری</div>
+            <div class="meta-value">۱۲ مرداد</div>
+          </div>
+        </div>
+        <div class="class-meta-item">
+          <span class="meta-icon">⏰</span>
+          <div>
+            <div class="meta-label">ساعت</div>
+            <div class="meta-value">از 9 صبح</div>
+          </div>
+        </div>
+        <div class="class-meta-item">
+          <span class="meta-icon">📍</span>
+          <div>
+            <div class="meta-label">پلتفرم برگزاری</div>
+            <div class="meta-value">همین سایت</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="check-panel-grid">
+      <div>
+        <div class="check-card">
+          <div class="card-title"><span class="icon">📋</span> برنامه این جلسه</div>
+          <ul class="class-agenda">
+            <li><span class="agenda-dot"></span> آشنایی با مسیر آموزشی دوره و اهداف آن</li>
+            <li><span class="agenda-dot"></span> رسالت برنامه‌نویسی و کاربردهای آن در دنیای واقعی</li>
+            <li><span class="agenda-dot"></span> الگوریتم چیست؟ و چرا تفکر الگوریتمی مهم است</li>
+            <li><span class="agenda-dot"></span> آشنایی با مدرس</li>
+            <li><span class="agenda-dot"></span> رفع ابهامات اولیه</li>
+          </ul>
+
+          <div class="class-note">
+            📌 حضور در این جلسه برای شروع مسیر دوره توصیه می‌شود. برای اطلاع رسانی در کانال ها عضو باشید.
+          </div>
+
+          <div class="check-channels" style="margin-top: 22px;">
+            <p class="channels-label">📢 کانال‌های اطلاع‌رسانی:</p>
+            <div class="channels-list">
+              <div class="channel-box">
+                <span class="channel-badge telegram">تلگرام</span>
+                <a href="https://t.me/metanix_ir" target="_blank" class="channel-link">@metanix_ir</a>
+              </div>
+              <div class="channel-box">
+                <span class="channel-badge bale">بله</span>
+                <a href="https://ble.ir/metanix_ir" target="_blank" class="channel-link">@metanix_ir</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="check-card video-card">
+          <div class="card-title"><span class="icon">🎬</span> پخش جلسه</div>
+
+          <div class="video-frame-wrap">
+              <iframe
+                src='https://www.aparat.com/video/video/embed/videohash/wpvixh7/vt/frame'
+                class="video-frame"
+                title="جلسه آفلاین"
+                loading="lazy"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowfullscreen>
+              </iframe>
+          </div>
+
+          <div class="class-note" style="margin-top: 20px;">
+            📌 در صورت بروز مشکل در پخش ویدیو، صفحه را رفرش کنید یا از طریق پشتیبانی با ما در ارتباط باشید.
+          </div>
+        </div>
+
+      <div class="check-sidebar" style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="mascot-card">
+          <span class="mascot-glow"></span>
+          <img
+            src="{% static 'img/snake.png' %}"
+            alt="مار فانتزی متا آکادمی"
+            class="mascot-image"
+            loading="lazy"
+          >
+          <div class="mascot-title">🐍 متا آکادمی</div>
+          <div class="mascot-sub">می‌بینمت تو جلسه پیش‌نیاز!</div>
+        </div>
+
+        <div class="check-card" style="background: var(--surface);">
+          <div class="card-title"><span class="icon">➡️</span> جلسه بعدی</div>
+          <a href="{% url 'core:class_online' session_number=1 %}" class="session-quick-link">
+            <span style="color: var(--text-muted);">جلسه ۱ (آنلاین)</span>
+            <span style="font-weight: 700; color: var(--gold);">۱۹ مرداد</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ session_data.title }} | متا آکادمی{% endblock %}
+
+{% block content %}
+<section class="check-section">
+  <div class="check-container">
+
+    <div class="class-topbar">
+      <a href="{% url 'core:check_view' %}" class="class-back-link">→ بازگشت به پنل کاربری</a>
+    </div>
+
+    <div class="class-hero class-hero-online">
+      <span class="class-hero-mode online">💻 آنلاین</span>
+      <h1 class="class-hero-title">{{ session_data.title }}</h1>
+      <p class="class-hero-sub">{{ session_data.desc }}</p>
+      <div class="class-hero-meta">
+        <div class="class-meta-item">
+          <span class="meta-icon">📆</span>
+          <div>
+            <div class="meta-label">تاریخ برگزاری</div>
+            <div class="meta-value">{{ session_data.date }}</div>
+          </div>
+        </div>
+        <div class="class-meta-item">
+          <span class="meta-icon">⏰</span>
+          <div>
+            <div class="meta-label">ساعت</div>
+            <div class="meta-value">4 بعدازظهر</div>
+          </div>
+        </div>
+        <div class="class-meta-item">
+          <span class="meta-icon">🔢</span>
+          <div>
+            <div class="meta-label">شماره جلسه</div>
+            <div class="meta-value">{{ session_number }} از ۵</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="check-panel-grid">
+      <div>
+        {# ---------- پخش‌کننده ویدیو ---------- #}
+        <div class="check-card video-card">
+          <div class="card-title"><span class="icon">🎬</span> پخش جلسه</div>
+
+          <div class="video-frame-wrap">
+            {% if session_data.video_url %}
+              <iframe
+                src="{{ session_data.video_url }}"
+                class="video-frame"
+                title="{{ session_data.title }}"
+                loading="lazy"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowfullscreen>
+              </iframe>
+            {% else %}
+              <div class="video-placeholder">
+                <span class="video-placeholder-icon">🎥</span>
+                <p>این جلسه آنلاین هنوز شروع نشده.</p>
+                <p class="video-placeholder-hint">به‌محض برگزاری کلاس، لایو در همین صفحه در دسترس قرار می‌گیرد.</p>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="class-note" style="margin-top: 20px;">
+            📌 در صورت بروز مشکل در پخش ویدیو، صفحه را رفرش کنید یا از طریق پشتیبانی با ما در ارتباط باشید.
+          </div>
+        </div>
+      </div>
+
+      <div class="check-sidebar" style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="mascot-card">
+          <span class="mascot-glow"></span>
+          <img
+            src="{% static 'img/snake.png' %}"
+            alt="مار فانتزی متا آکادمی"
+            class="mascot-image"
+            loading="lazy"
+          >
+          <div class="mascot-title">🐍 متا آکادمی</div>
+          <div class="mascot-sub">همراه شما در مسیر کدنویسی</div>
+        </div>
+
+        {# ---------- ناوبری بین جلسات آنلاین ---------- #}
+        <div class="check-card" style="background: var(--surface);">
+          <div class="card-title"><span class="icon">📚</span> جلسات آنلاین</div>
+          <div class="session-nav">
+            {% for num, data in all_sessions.items %}
+              <a href="{% url 'core:class_online' session_number=num %}"
+                 class="session-nav-item {% if num == session_number %}active{% endif %}">
+                <span class="session-nav-num">{{ num }}</span>
+                <span class="session-nav-info">
+                  <span class="session-nav-title">{{ data.title }}</span>
+                  <span class="session-nav-date">{{ data.date }}</span>
+                </span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <a href="{% url 'core:class_offline' %}" class="check-card session-back-card">
+          <span class="icon">🏫</span>
+          <span>مشاهده‌ی جلسه پیش‌نیاز (آفلاین)</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

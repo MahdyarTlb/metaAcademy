@@ -67,6 +67,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.roadmap-content,
+.session-nav-info,
+.session-nav-item,
+.class-meta-item > div {
+  min-width: 0;
+}
+
 img { max-width: 100%; display: block; }
 
 a {
@@ -1753,4 +1765,419 @@ button { font-family: inherit; }
   .check-panel-title { font-size: 1.1rem; }
   .user-status-badge { font-size: 0.7rem; padding: 4px 12px; }
   .roadmap-label { font-size: 0.9rem; }
+}
+
+/* ------ مار فانتزی بالای فرم جستجو ------ */
+.check-form-snake {
+  width: 90px;
+  margin: 0 auto 14px;
+}
+.check-form-snake img {
+  width: 100%;
+  filter: drop-shadow(0 10px 24px rgba(255, 138, 92, 0.3));
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ------ هاله‌ی نورانی پشت مار فانتزی (سیگنیچر) ------ */
+.mascot-card { position: relative; }
+
+.mascot-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 220px; height: 220px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(94, 234, 212, 0.16), transparent 65%);
+  filter: blur(6px);
+  animation: glow-pulse 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.92); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+/* مار در پنل کاربری همراه اسکرول ثابت می‌ماند */
+.mascot-sticky {
+  position: sticky;
+  top: 100px;
+}
+
+@media (max-width: 992px) {
+  .mascot-sticky { position: static; }
+}
+
+/* ------ لینک‌های سریع وضعیت کلاس‌ها (قابل کلیک) ------ */
+.session-quick-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-alt);
+  border-radius: var(--radius-sm);
+  border-right: 3px solid var(--gold);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.session-quick-link:hover {
+  transform: translateX(-3px);
+  background: var(--surface-2);
+  border-color: var(--coral);
+}
+
+/* ------ برچسب حالت جلسه (آنلاین/حضوری) روی رودمپ ------ */
+.roadmap-mode {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.roadmap-mode.online {
+  background: rgba(255, 200, 87, 0.14);
+  color: var(--gold);
+}
+
+.roadmap-mode.offline {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+/* ------ رودمپ به‌صورت لینک قابل کلیک ------ */
+.roadmap-item-link {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding-inline: 10px;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.roadmap-item-link:hover {
+  background: var(--bg-alt);
+  transform: translateX(-4px);
+}
+
+.roadmap-item-link:hover .roadmap-arrow {
+  opacity: 1;
+  transform: translateX(-4px);
+}
+
+.roadmap-arrow {
+  align-self: center;
+  color: var(--coral);
+  font-size: 1.1rem;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+/* ------ خط تایم‌لاین: افکت «حرکت مار» روی مسیر (سیگنیچر) ------ */
+.roadmap-timeline::before {
+  background: linear-gradient(
+    to bottom,
+    var(--mint) 0%,
+    var(--gold) 35%,
+    var(--coral) 70%,
+    var(--mint) 100%
+  );
+  background-size: 100% 200%;
+  opacity: 0.45;
+  animation: snake-flow 6s linear infinite;
+}
+
+@keyframes snake-flow {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 200%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roadmap-timeline::before { animation: none; }
+  .mascot-glow { animation: none; }
+}
+
+/* ==========================================================================
+   صفحات کلاس (آفلاین / آنلاین)
+   ========================================================================== */
+
+.class-topbar {
+  margin-bottom: 18px;
+}
+
+.class-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.class-back-link:hover { color: var(--coral); }
+
+/* ------ هیرو صفحه کلاس ------ */
+.class-hero {
+  position: relative;
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.class-hero-online {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 200, 87, 0.14), transparent 55%),
+    var(--surface);
+}
+
+.class-hero-offline {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(94, 234, 212, 0.14), transparent 55%),
+    var(--surface);
+}
+
+.class-hero-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.class-hero-mode.online {
+  background: rgba(255, 200, 87, 0.14);
+  color: var(--gold);
+  border: 1px solid rgba(255, 200, 87, 0.3);
+}
+
+.class-hero-mode.offline {
+  background: var(--mint-soft);
+  color: var(--mint);
+  border: 1px solid rgba(94, 234, 212, 0.3);
+}
+
+.class-hero-title {
+  font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem);
+  font-weight: 800;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.class-hero-sub {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 70ch;
+  margin-bottom: 26px;
+}
+
+.class-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.class-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  flex: 1 1 200px;
+}
+
+.meta-icon { font-size: 1.4rem; flex-shrink: 0; }
+
+.meta-label {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+
+.meta-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ------ برنامه‌ی جلسه (آجندا) ------ */
+.class-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.class-agenda li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.agenda-dot {
+  flex-shrink: 0;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--coral);
+  margin-top: 8px;
+}
+
+.class-note {
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-right: 3px solid var(--gold);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+/* ------ پخش‌کننده‌ی ویدیو ------ */
+.video-frame-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* نسبت 16:9 */
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #0c0d1c;
+  border: 1px solid var(--border-soft);
+}
+
+.video-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px;
+}
+
+.video-placeholder-icon {
+  font-size: 2.4rem;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+.video-placeholder-hint {
+  font-size: 0.82rem;
+  color: var(--text-faint);
+}
+
+/* ------ ناوبری بین جلسات آنلاین (سایدبار) ------ */
+.session-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.session-nav-item:hover {
+  border-color: var(--coral);
+  transform: translateX(-2px);
+}
+
+.session-nav-item.active {
+  border-color: var(--gold);
+  background: rgba(255, 200, 87, 0.08);
+}
+
+.session-nav-num {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.session-nav-item.active .session-nav-num {
+  background: var(--gold);
+  color: #1a0e08;
+}
+
+.session-nav-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-nav-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-nav-date {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  direction: ltr;
+  text-align: right;
+}
+
+/* ------ کارت بازگشت به جلسه‌ی حضوری ------ */
+.session-back-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--text);
+  padding: 18px;
+}
+
+.session-back-card:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+/* ------ ریسپانسیو صفحات کلاس ------ */
+@media (max-width: 640px) {
+  .class-hero { padding: 24px 18px; }
+  .class-hero-meta { flex-direction: column; }
+  .class-meta-item { flex: 1 1 auto; }
 }

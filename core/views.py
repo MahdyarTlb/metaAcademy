@@ -1,23 +1,23 @@
 from django.views.generic import TemplateView, CreateView, ListView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
+from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.core.validators import ValidationError
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect, render
 from .models import Student
-from .forms import StudentForm
+from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
-from .forms import ExcelUploadForm, CheckForm
 from django.db import IntegrityError
-
+ 
 class HomeView(TemplateView):
     template_name = 'home.html'
-
+ 
 class RegisterView(CreateView):
     model = Student
     form_class = StudentForm
@@ -26,15 +26,20 @@ class RegisterView(CreateView):
     
     def form_valid(self, form):
         response = super().form_valid(form)
-        
+ 
+        # اطلاعات لازم برای صفحه‌ی «ثبت‌نام موفق»
         self.request.session['student_name'] = form.instance.name
         self.request.session['student_age'] = form.instance.age
         self.request.session['student_phone'] = form.instance.phone_number
+        self.request.session['student_email'] = form.instance.email or ''
         self.request.session['student_reshte'] = form.instance.reshte
         self.request.session['student_school'] = form.instance.school
         self.request.session['student_city'] = form.instance.city
         self.request.session['student_moaref'] = form.instance.moaref or ''
-        
+ 
+        # چون دانشجو همین الان رمز عبور تعیین کرده، مستقیماً واردش می‌کنیم
+        self.request.session['auth_student_id'] = form.instance.pk
+ 
         messages.success(self.request, f'✅ دانشجو  {form.instance.name} با موفقیت ثبت شد!')
         return response
     
@@ -46,7 +51,8 @@ class RegisterView(CreateView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'ثبت‌نام دانش‌آموز'
         return context
-
+ 
+ 
 class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Student
     template_name = 'students.html'
@@ -69,39 +75,154 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset
-
+ 
+ 
+# ==========================================================================
+# پنل کاربری با ورود واقعی (شماره/ایمیل + رمز عبور)
+# ==========================================================================
+ 
 class CheckView(View):
+    """
+    مرحله‌ی اول ورود: گرفتن شماره موبایل یا ایمیل.
+    - اگر کاربر از قبل لاگین کرده باشد (auth_student_id در سشن)، مستقیم پنل نشان داده می‌شود.
+    - اگر شماره/ایمیل معتبر باشد ولی کاربر هنوز رمز عبور نداشته باشد (کاربران قدیمی)،
+      به صفحه‌ی «تعیین رمز عبور» هدایت می‌شود.
+    - اگر رمز عبور داشته باشد، به صفحه‌ی «ورود با رمز عبور» هدایت می‌شود.
+    """
     template_name = 'check.html'
-
+ 
     def get(self, request):
+        # امکان خروج از مرحله‌ی رمز عبور و بازگشت به فرم اولیه با ?reset=1
+        if request.GET.get('reset'):
+            request.session.pop('pending_student_id', None)
+ 
+        student_id = request.session.get('auth_student_id')
+        if student_id:
+            student = Student.objects.filter(pk=student_id).first()
+            if student:
+                return render(request, self.template_name, {
+                    'found': True,
+                    'student': student,
+                    'logged_in': True,
+                })
+            request.session.pop('auth_student_id', None)
+ 
         form = CheckForm()
         return render(request, self.template_name, {'form': form})
-
+ 
     def post(self, request):
         form = CheckForm(request.POST)
         context = {'form': form}
-
+ 
         if form.is_valid():
-            phone = form.cleaned_data['phone']
+            identifier = form.cleaned_data['identifier'].strip()
+ 
             try:
-                student = Student.objects.get(phone_number=phone)
-                context['student'] = student
-
-                request.session['student_name'] = student.name
-                request.session['student_age'] = student.age
-                request.session['student_phone'] = student.phone_number
-                request.session['student_reshte'] = student.reshte
-                request.session['student_school'] = student.school
-                request.session['student_city'] = student.city
-                request.session['student_moaref'] = student.moaref
-                
-                context['found'] = True
+                if identifier.isdigit() and len(identifier) == 11:
+                    student = Student.objects.get(phone_number=identifier)
+                else:
+                    student = Student.objects.get(email=identifier)
+ 
+                # شناسه‌ی دانشجو را موقتاً در سشن نگه می‌داریم تا مرحله‌ی رمز عبور طی شود
+                request.session['pending_student_id'] = student.pk
+ 
+                if student.password:
+                    return redirect('core:login_password')
+                return redirect('core:set_password')
+ 
             except Student.DoesNotExist:
                 context['found'] = False
-                context['error'] = 'هیچ ثبت‌نامی با این شماره پیدا نشد، با پشتیبانی ارتباط برقرار کنید'
-
+                context['error'] = 'ایمیل یا شماره تماس پیدا نشد، با پشتیبانی ارتباط برقرار کنید'
+ 
         return render(request, self.template_name, context)
-
+ 
+ 
+class PendingStudentMixin:
+    """کمک‌کننده برای صفحات تعیین/ورود رمز عبور که به pending_student_id نیاز دارند."""
+ 
+    def get_pending_student(self, request):
+        student_id = request.session.get('pending_student_id')
+        if not student_id:
+            return None
+        return Student.objects.filter(pk=student_id).first()
+ 
+ 
+class SetPasswordView(PendingStudentMixin, View):
+    """تعیین رمز عبور برای اولین بار (کاربرانی که قبل از این قابلیت ثبت‌نام کرده‌اند)."""
+    template_name = 'check_password.html'
+ 
+    def get(self, request):
+        student = self.get_pending_student(request)
+        if not student:
+            messages.warning(request, 'ابتدا شماره موبایل یا ایمیل خود را در پنل کاربری وارد کنید.')
+            return redirect('core:check_view')
+        if student.password:
+            return redirect('core:login_password')
+ 
+        form = SetPasswordForm()
+        return render(request, self.template_name, {'form': form, 'mode': 'set', 'student': student})
+ 
+    def post(self, request):
+        student = self.get_pending_student(request)
+        if not student:
+            messages.warning(request, 'ابتدا شماره موبایل یا ایمیل خود را در پنل کاربری وارد کنید.')
+            return redirect('core:check_view')
+ 
+        form = SetPasswordForm(request.POST)
+        if form.is_valid():
+            student.password = make_password(form.cleaned_data['password1'])
+            student.save(update_fields=['password'])
+ 
+            request.session.pop('pending_student_id', None)
+            request.session['auth_student_id'] = student.pk
+ 
+            messages.success(request, '✅ رمز عبور شما با موفقیت تنظیم شد و وارد پنل شدید.')
+            return redirect('core:check_view')
+ 
+        return render(request, self.template_name, {'form': form, 'mode': 'set', 'student': student})
+ 
+ 
+class LoginPasswordView(PendingStudentMixin, View):
+    """ورود با رمز عبور برای کاربرانی که قبلاً رمز تعیین کرده‌اند."""
+    template_name = 'check_password.html'
+ 
+    def get(self, request):
+        student = self.get_pending_student(request)
+        if not student:
+            messages.warning(request, 'ابتدا شماره موبایل یا ایمیل خود را در پنل کاربری وارد کنید.')
+            return redirect('core:check_view')
+        if not student.password:
+            return redirect('core:set_password')
+ 
+        form = LoginPasswordForm()
+        return render(request, self.template_name, {'form': form, 'mode': 'login', 'student': student})
+ 
+    def post(self, request):
+        student = self.get_pending_student(request)
+        if not student:
+            messages.warning(request, 'ابتدا شماره موبایل یا ایمیل خود را در پنل کاربری وارد کنید.')
+            return redirect('core:check_view')
+ 
+        form = LoginPasswordForm(request.POST)
+        if form.is_valid():
+            entered_password = form.cleaned_data['password']
+            if check_password(entered_password, student.password):
+                request.session.pop('pending_student_id', None)
+                request.session['auth_student_id'] = student.pk
+                return redirect('core:check_view')
+            form.add_error('password', 'رمز عبور اشتباه است.')
+ 
+        return render(request, self.template_name, {'form': form, 'mode': 'login', 'student': student})
+ 
+ 
+class LogoutView(View):
+    def get(self, request):
+        request.session.pop('auth_student_id', None)
+        request.session.pop('pending_student_id', None)
+        messages.info(request, 'از حساب کاربری خارج شدید.')
+        return redirect('core:check_view')
+ 
+ 
 class SuccessView(TemplateView):
     template_name = 'success.html'
     
@@ -114,6 +235,76 @@ class SuccessView(TemplateView):
         context['school'] = self.request.session.get('student_school', '')
         context['city'] = self.request.session.get('student_city', '')
         context['moaref'] = self.request.session.get('student_moaref', '')
+        return context
+ 
+CLASS_SESSIONS = {
+    1: {
+        'title': 'جلسه ۱: شروع طوفانی',
+        'date': '۱۹ مرداد',
+        'desc': 'مقدمات برنامه‌نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون',
+        'video_url': '', # https://www.aparat.com/embed/live/metaAcademy
+    },
+    2: {
+        'title': 'جلسه ۲: ساختمان‌های داده',
+        'date': '۲۶ مرداد',
+        'desc': 'لیست‌ها، دیکشنری‌ها، تاپل‌ها، متدهای پرکاربرد هرکدام',
+        'video_url': '',
+    },
+    3: {
+        'title': 'جلسه ۳: کنترل جریان برنامه',
+        'date': '۲ شهریور',
+        'desc': 'شرط و حلقه‌ها، پیمایش پرسرعت، حلقه‌های تودرتو، دستورات مربوط به شرط و حلقه، حل مسائل منطقی',
+        'video_url': '',
+    },
+    4: {
+        'title': 'جلسه ۴: توابع و شیءگرایی',
+        'date': '۹ شهریور',
+        'desc': 'تابع، ورودی و خروجی، ماژول‌ها، کلاس و آبجکت، شیءگرایی، ارث‌بری، چندریختی',
+        'video_url': '',
+    },
+    5: {
+        'title': 'جلسه ۵: پروژه‌های واقعی با پایتون',
+        'date': '۱۶ شهریور',
+        'desc': 'مدیریت و خواندن/نوشتن فایل، مدیریت خطاها، مفهوم استثناءها و مدیریت آنها، رمزنگاری، امنیت در پایتون، بازی‌سازی با پایگیم',
+        'video_url': '',
+    },
+}
+
+class StudentSessionRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if not request.session.get('auth_student_id'):
+            messages.warning(
+                request,
+                'برای دسترسی به این صفحه ابتدا وارد پنل کاربری خود شوید.'
+            )
+            return redirect('core:check_view')
+        return super().dispatch(request, *args, **kwargs)
+ 
+ 
+class ClassOfflineView(StudentSessionRequiredMixin, TemplateView):
+    template_name = 'class_offline.html'
+ 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'جلسه پیش‌نیاز'
+        return context
+ 
+ 
+class ClassOnlineView(StudentSessionRequiredMixin, TemplateView):
+    template_name = 'class_online.html'
+ 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        session_number = kwargs.get('session_number')
+        session_data = CLASS_SESSIONS.get(session_number)
+ 
+        if not session_data:
+            raise Http404('جلسه‌ی مورد نظر پیدا نشد.')
+ 
+        context['session_number'] = session_number
+        context['session_data'] = session_data
+        context['all_sessions'] = CLASS_SESSIONS
+        context['title'] = session_data['title']
         return context
 
 @staff_member_required
