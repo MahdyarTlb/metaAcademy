@@ -31,6 +31,14 @@ class StudentForm(forms.ModelForm):
             'city': forms.TextInput(attrs={'class': 'form-control'}),
             'moaref': forms.TextInput(attrs={'class': 'form-control'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['phone_number'].required = True
+        self.fields['phone_number'].error_messages = {
+            'required': 'شماره تلفن الزامی است.'
+        }
 
     def clean(self):
         cleaned_data = super().clean()

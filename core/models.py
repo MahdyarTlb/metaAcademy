@@ -21,6 +21,8 @@ class Student(models.Model):
             )
         ],
         unique=True,
+        null=True,
+        blank=True,
         verbose_name='شماره تلفن'
     )
     
