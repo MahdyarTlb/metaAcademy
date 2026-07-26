@@ -62,7 +62,7 @@ class StudentForm(forms.ModelForm):
 class CheckForm(forms.Form):
     identifier = forms.CharField(
         label='شماره موبایل یا ایمیل',
-        max_length=20,
+        max_length=254,
         widget=forms.TextInput(attrs={
             'placeholder': 'موبایل یا ایمیل',
             'dir': 'ltr',
@@ -72,8 +72,6 @@ class CheckForm(forms.Form):
 
 
 class SetPasswordForm(forms.Form):
-    """برای کاربرانی که قبلاً بدون رمز ثبت‌نام کرده‌اند و اولین‌بار وارد پنل می‌شوند."""
-
     password1 = forms.CharField(
         label='رمز عبور جدید',
         widget=forms.PasswordInput(attrs={
@@ -102,8 +100,6 @@ class SetPasswordForm(forms.Form):
 
 
 class LoginPasswordForm(forms.Form):
-    """برای کاربرانی که رمز عبور دارند و می‌خواهند وارد پنل شوند."""
-
     password = forms.CharField(
         label='رمز عبور',
         widget=forms.PasswordInput(attrs={
