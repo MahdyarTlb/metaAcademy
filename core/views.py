@@ -242,7 +242,7 @@ CLASS_SESSIONS = {
         'title': 'جلسه ۱: شروع طوفانی',
         'date': '۱۹ مرداد',
         'desc': 'مقدمات برنامه‌نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون',
-        'video_url': 'https://www.aparat.com/embed/live/metaAcademy',
+        'video_url': 'https://aparat.com/v/unb7ovk',
     },
     2: {
         'title': 'جلسه ۲: ساختمان‌های داده',
