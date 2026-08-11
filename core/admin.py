@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student
+from .models import Student, VideoLink
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
@@ -19,3 +19,8 @@ class StudentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+@admin.register(VideoLink)
+class VideoLinkAdmin(admin.ModelAdmin):
+    list_display = ['session_id','is_live', 'video_url', 'chat_url']
+    list_display_links = ['session_id']

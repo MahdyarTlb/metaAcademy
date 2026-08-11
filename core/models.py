@@ -73,3 +73,12 @@ class Student(models.Model):
     
     def __str__(self):
         return self.name
+
+class VideoLink(models.Model):
+    session_id = models.IntegerField(unique=True, verbose_name="شماره جلسه")
+    video_url = models.URLField(blank=True, null=True, verbose_name="لینک ویدیو")
+    chat_url = models.URLField(blank=True, null=True, verbose_name="لینک چت زنده", default='')
+    is_live = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"جلسه {self.session_id}"

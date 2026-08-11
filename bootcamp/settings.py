@@ -121,10 +121,6 @@ CSRF_TRUSTED_ORIGINS = [
     'http://mtaacademy.ir',
     'https://www.mtaacademy.ir',
     'http://www.mtaacademy.ir',
-    'https://metanix.runflare.run',
-    'http://metanix.runflare.run',
-    'https://www.metanix.runflare.run',
-    'http://www.metanix.runflare.run',
 ]
 
 # ============================================

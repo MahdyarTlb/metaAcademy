@@ -4,9 +4,9 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.core.validators import ValidationError
-from django.urls import reverse_lazy, reverse
+from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
-from .models import Student
+from .models import Student, VideoLink
 from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -236,39 +236,6 @@ class SuccessView(TemplateView):
         context['city'] = self.request.session.get('student_city', '')
         context['moaref'] = self.request.session.get('student_moaref', '')
         return context
- 
-CLASS_SESSIONS = {
-    1: {
-        'title': 'جلسه ۱: شروع طوفانی',
-        'date': '۱۹ مرداد',
-        'desc': 'مقدمات برنامه‌نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون',
-        'video_url': 'https://aparat.com/v/unb7ovk',
-    },
-    2: {
-        'title': 'جلسه ۲: ساختمان‌های داده',
-        'date': '۲۶ مرداد',
-        'desc': 'لیست‌ها، دیکشنری‌ها، تاپل‌ها، متدهای پرکاربرد هرکدام',
-        'video_url': '',
-    },
-    3: {
-        'title': 'جلسه ۳: کنترل جریان برنامه',
-        'date': '۲ شهریور',
-        'desc': 'شرط و حلقه‌ها، پیمایش پرسرعت، حلقه‌های تودرتو، دستورات مربوط به شرط و حلقه، حل مسائل منطقی',
-        'video_url': '',
-    },
-    4: {
-        'title': 'جلسه ۴: توابع و شیءگرایی',
-        'date': '۹ شهریور',
-        'desc': 'تابع، ورودی و خروجی، ماژول‌ها، کلاس و آبجکت، شیءگرایی، ارث‌بری، چندریختی',
-        'video_url': '',
-    },
-    5: {
-        'title': 'جلسه ۵: پروژه‌های واقعی با پایتون',
-        'date': '۱۶ شهریور',
-        'desc': 'مدیریت و خواندن/نوشتن فایل، مدیریت خطاها، مفهوم استثناءها و مدیریت آنها، رمزنگاری، امنیت در پایتون، بازی‌سازی با پایگیم',
-        'video_url': '',
-    },
-}
 
 class StudentSessionRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
@@ -296,6 +263,49 @@ class ClassOnlineView(StudentSessionRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         session_number = kwargs.get('session_number')
+        DEFAULT_C_LINK = "https://www.aparat.com/metaAcademy/live"
+        
+        video_links = {v.session_id: {'video_url': v.video_url, 'chat_url': v.chat_url, 'is_live': v.is_live} for v in VideoLink.objects.all()}
+        
+        CLASS_SESSIONS = {
+            1: {
+                'title': 'جلسه ۱: شروع طوفانی',
+                'date': '۱۹ مرداد',
+                'desc': 'مقدمات برنامه‌نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون',
+                'video_url': '',
+            },
+            2: {
+                'title': 'جلسه ۲: ساختمان‌های داده',
+                'date': '۲۶ مرداد',
+                'desc': 'لیست‌ها، دیکشنری‌ها، تاپل‌ها، متدهای پرکاربرد هرکدام',
+                'video_url': '',
+            },
+            3: {
+                'title': 'جلسه ۳: کنترل جریان برنامه',
+                'date': '۲ شهریور',
+                'desc': 'شرط و حلقه‌ها، پیمایش پرسرعت، حلقه‌های تودرتو، دستورات مربوط به شرط و حلقه، حل مسائل منطقی',
+                'video_url': '',
+            },
+            4: {
+                'title': 'جلسه ۴: توابع و شیءگرایی',
+                'date': '۹ شهریور',
+                'desc': 'تابع، ورودی و خروجی، ماژول‌ها، کلاس و آبجکت، شیءگرایی، ارث‌بری، چندریختی',
+                'video_url': '',
+            },
+            5: {
+                'title': 'جلسه ۵: پروژه‌های واقعی با پایتون',
+                'date': '۱۶ شهریور',
+                'desc': 'مدیریت و خواندن/نوشتن فایل، مدیریت خطاها، مفهوم استثناءها و مدیریت آنها، رمزنگاری، امنیت در پایتون، بازی‌سازی با پایگیم',
+                'video_url': '',
+            },
+        }
+        
+        for session_id in CLASS_SESSIONS:
+            if session_id in video_links:
+                CLASS_SESSIONS[session_id]['video_url'] = video_links[session_id]['video_url']
+                CLASS_SESSIONS[session_id]['chat_url'] = video_links[session_id]['chat_url'] or DEFAULT_C_LINK
+                CLASS_SESSIONS[session_id]['is_live'] = video_links[session_id]['is_live']
+                        
         session_data = CLASS_SESSIONS.get(session_number)
  
         if not session_data:

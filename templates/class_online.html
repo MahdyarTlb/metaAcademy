@@ -64,9 +64,13 @@
               </div>
             {% endif %}
           </div>
-          <a href="https://www.aparat.com/metaAcademy/live">
+          <a href="{{ session_data.chat_url }}">
           <div class="session-nav-item" style="margin-top: 20px;">
-            📌 چت آنلاین و پرسیدن سوال
+            {% if session_data.is_live %}
+              📌 چت آنلاین و پرسیدن سوال
+            {% else %}
+              دانلود ویدیو
+            {% endif %}
           </div>
         </a>
         </div>
