@@ -26,6 +26,8 @@ class Student(models.Model):
         verbose_name='شماره تلفن'
     )
     
+    national_code = models.CharField(unique=True, null=True, blank=True, verbose_name="کدملی", max_length=10)
+    
     email = models.EmailField(unique=True, null=True, blank=True, verbose_name="ایمیل", validators=[EmailValidator(message='ایمیل وارد شده صحیح نیست')])
     
     password = models.CharField(
@@ -56,6 +58,8 @@ class Student(models.Model):
         null=True,
         verbose_name='نحوه آشنایی با بوتکمپ'
     )
+    
+    is_certified = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(
         auto_now_add=True,

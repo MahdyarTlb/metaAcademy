@@ -16,6 +16,8 @@ urlpatterns = [
     path('check/login-password/', views.LoginPasswordView.as_view(), name='login_password'),
     path('check/logout/', views.LogoutView.as_view(), name='check_logout'),
     
+    path('certificate/', views.CertificateView.as_view(), name='certificate'),
+    
     path('classes/offline/', views.ClassOfflineView.as_view(), name='class_offline'),
     path('classes/online/<int:session_number>/', views.ClassOnlineView.as_view(), name='class_online'),
 ]

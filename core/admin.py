@@ -3,13 +3,13 @@ from .models import Student, VideoLink
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'age', 'phone_number', 'email', 'reshte', 'city', 'created_at']
+    list_display = ['name', 'age', 'national_code', 'is_certified', 'phone_number', 'email', 'reshte', 'city', 'created_at']
     list_filter = ['reshte', 'city', 'created_at']
-    search_fields = ['name', 'phone_number', 'email', 'school', 'city']
+    search_fields = ['name', 'national_code','phone_number', 'email', 'school', 'city']
     readonly_fields = ['created_at', 'updated_at']
     fieldsets = (
         ('اطلاعات شخصی', {
-            'fields': ('name', 'age', 'phone_number', 'email')
+            'fields': ('name', 'age', 'national_code', 'is_certified', 'phone_number', 'email')
         }),
         ('اطلاعات تحصیلی', {
             'fields': ('reshte', 'school', 'city')

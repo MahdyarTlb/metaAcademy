@@ -1,6 +1,7 @@
 from django import forms
 from .models import Student
 from django.contrib.auth.hashers import make_password
+from django.core.exceptions import ValidationError
 
 class StudentForm(forms.ModelForm):
     password1 = forms.CharField(
@@ -117,3 +118,38 @@ class ExcelUploadForm(forms.Form):
             'accept': '.xlsx,.xls'
         })
     )
+
+class CertificateForm(forms.Form):
+    name = forms.CharField(
+        max_length=50,
+        label='نام و نام خانوادگی',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'نام و نام خانوادگی خود را وارد کنید'
+        })
+    )
+    
+    national_code = forms.CharField(
+        max_length=10,
+        min_length=10,
+        label='کد ملی',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'کد ملی خود را وارد کنید',
+            'pattern': '[0-9]{10}',
+            'title': 'کد ملی باید ۱۰ رقم باشد'
+        })
+    )
+    
+    def clean_national_code(self):
+        national_code = self.cleaned_data.get('national_code')
+        # حذف فاصله‌ها
+        national_code = national_code.replace(' ', '')
+        # بررسی اینکه فقط عدد باشد
+        if not national_code.isdigit():
+            raise ValidationError('کد ملی باید فقط شامل اعداد باشد')
+        # بررسی طول
+        if len(national_code) != 10:
+            raise ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد')
+        
+        return national_code

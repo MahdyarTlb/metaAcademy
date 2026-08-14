@@ -68,6 +68,11 @@
                 </div>
 
                 <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
+                  <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">کدملی</span>
+                  <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem;">{{ student.national_code|default:"—" }}</strong>
+                </div>
+
+                <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
                   <span class="info-label" style="color: var(--text-muted); font-weight: 500; font-size: 0.9rem;">تلفن</span>
                   <strong style="color: var(--text); font-weight: 700; font-size: 0.95rem; direction: ltr;">{{ student.phone_number|default:"—" }}</strong>
                 </div>
@@ -131,9 +136,9 @@
 
               {# ---------- دکمه‌های اقدام ---------- #}
               <div class="check-actions">
-                <button class="btn btn-secondary check-action-btn" disabled>
-                  📜 دریافت مدرک <span class="soon-badge">به زودی</span>
-                </button>
+                <a href="{% url 'core:certificate' %}" class="btn btn-ghost check-action-btn">
+                  📜 دریافت مدرک
+                </a>
                 <a href="{% url 'core:class_online' session_number=1 %}" class="btn btn-primary check-action-btn">
                   🚀 شروع کلاس
                 </a>

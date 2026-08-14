@@ -7,7 +7,7 @@ from django.core.validators import ValidationError
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
 from .models import Student, VideoLink
-from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm
+from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.http import HttpResponse, Http404
@@ -17,6 +17,26 @@ from django.db import IntegrityError
  
 class HomeView(TemplateView):
     template_name = 'home.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        student_id = self.request.session.get('auth_student_id')
+        if student_id:
+            try:
+                student = Student.objects.get(pk=student_id)
+                context['logged_in'] = True
+                context['student'] = student
+            except Student.DoesNotExist:
+                # اگر دانشجو وجود نداشت، سشن رو پاک کن
+                self.request.session.pop('auth_student_id', None)
+                context['logged_in'] = False
+                context['student'] = None
+        else:
+            context['logged_in'] = False
+            context['student'] = None
+            
+        return context
  
 class RegisterView(CreateView):
     model = Student
@@ -135,8 +155,7 @@ class CheckView(View):
                 context['error'] = 'ایمیل یا شماره تماس پیدا نشد، با پشتیبانی ارتباط برقرار کنید'
  
         return render(request, self.template_name, context)
- 
- 
+
 class PendingStudentMixin:
     """کمک‌کننده برای صفحات تعیین/ورود رمز عبور که به pending_student_id نیاز دارند."""
  
@@ -145,7 +164,6 @@ class PendingStudentMixin:
         if not student_id:
             return None
         return Student.objects.filter(pk=student_id).first()
- 
  
 class SetPasswordView(PendingStudentMixin, View):
     """تعیین رمز عبور برای اولین بار (کاربرانی که قبل از این قابلیت ثبت‌نام کرده‌اند)."""
@@ -180,8 +198,7 @@ class SetPasswordView(PendingStudentMixin, View):
             return redirect('core:check_view')
  
         return render(request, self.template_name, {'form': form, 'mode': 'set', 'student': student})
- 
- 
+
 class LoginPasswordView(PendingStudentMixin, View):
     """ورود با رمز عبور برای کاربرانی که قبلاً رمز تعیین کرده‌اند."""
     template_name = 'check_password.html'
@@ -214,14 +231,12 @@ class LoginPasswordView(PendingStudentMixin, View):
  
         return render(request, self.template_name, {'form': form, 'mode': 'login', 'student': student})
  
- 
 class LogoutView(View):
     def get(self, request):
         request.session.pop('auth_student_id', None)
         request.session.pop('pending_student_id', None)
         messages.info(request, 'از حساب کاربری خارج شدید.')
         return redirect('core:check_view')
- 
  
 class SuccessView(TemplateView):
     template_name = 'success.html'
@@ -317,6 +332,72 @@ class ClassOnlineView(StudentSessionRequiredMixin, TemplateView):
         context['title'] = session_data['title']
         return context
 
+class CertificateView(View):
+        """
+        نمایش و ویرایش اطلاعات دانشجو برای صدور مدرک
+        - کاربر می‌تواند نام و کد ملی خود را ویرایش کند
+        - اطلاعات به صورت امن در سشن نگهداری می‌شود
+        - در آینده قابلیت پیش‌نمایش و دانلود مدرک اضافه خواهد شد
+        """
+        template_name = 'certificate.html'
+        
+        def get(self, request):
+            # بررسی احراز هویت کاربر
+            student_id = request.session.get('auth_student_id')
+            if not student_id:
+                messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
+                return redirect('core:check')
+            
+            try:
+                student = Student.objects.get(pk=student_id)
+            except Student.DoesNotExist:
+                request.session.pop('auth_student_id', None)
+                messages.error(request, 'کاربر یافت نشد')
+                return redirect('core:check')
+            
+            # پر کردن فرم با اطلاعات فعلی دانشجو
+            initial_data = {
+                'name': student.name,
+                'national_code': student.national_code,
+            }
+            form = CertificateForm(initial=initial_data)
+            
+            return render(request, self.template_name, {
+                'form': form,
+                'student': student,
+            })
+        
+        def post(self, request):
+            # بررسی احراز هویت
+            student_id = request.session.get('auth_student_id')
+            if not student_id:
+                messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
+                return redirect('core:check')
+            
+            try:
+                student = Student.objects.get(pk=student_id)
+            except Student.DoesNotExist:
+                request.session.pop('auth_student_id', None)
+                messages.error(request, 'کاربر یافت نشد')
+                return redirect('core:check')
+            
+            form = CertificateForm(request.POST)
+            
+            if form.is_valid():
+                # ذخیره اطلاعات در دیتابیس
+                student.name = form.cleaned_data['name']
+                student.national_code = form.cleaned_data['national_code']
+                student.save()
+                
+                messages.success(request, 'اطلاعات با موفقیت به‌روزرسانی شد')
+                return redirect('core:certificate')
+            
+            # در صورت نامعتبر بودن فرم
+            return render(request, self.template_name, {
+                'form': form,
+                'student': student,
+            })
+    
 @staff_member_required
 def export_excel(request):
     """
