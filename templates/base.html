@@ -44,6 +44,23 @@
   </header>
 
   <main class="site-main">
+    {% if messages %}
+    <div class="container">  <!-- اضافه کردن container -->
+      <div class="messages-wrap">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags|default:'info' }}">
+            <span class="alert-icon" aria-hidden="true">
+              {% if message.tags == 'success' %}✓
+              {% elif message.tags == 'error' %}!
+              {% else %}i
+              {% endif %}
+            </span>
+            <span class="alert-text">{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
     {% block content %}{% endblock %}
   </main>
 

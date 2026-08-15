@@ -64,6 +64,22 @@ class RegisterView(CreateView):
         return response
     
     def form_invalid(self, form):
+        if hasattr(form, 'existing_student') and form.existing_student:
+            existing_student = form.existing_student
+            # کاربر را به پنل کاربری هدایت کن
+            self.request.session['auth_student_id'] = existing_student.pk
+            self.request.session['student_name'] = existing_student.name
+            self.request.session['student_age'] = existing_student.age
+            self.request.session['student_phone'] = existing_student.phone_number
+            self.request.session['student_email'] = existing_student.email or ''
+            self.request.session['student_reshte'] = existing_student.reshte
+            self.request.session['student_school'] = existing_student.school
+            self.request.session['student_city'] = existing_student.city
+            self.request.session['student_moaref'] = existing_student.moaref or ''
+            
+            messages.warning(self.request, f'⚠️ این شماره موبایل قبلاً برای دانشجو {existing_student.name} ثبت شده است. شما به پنل کاربری هدایت شدید.')
+            return redirect('core:check_view')
+        
         messages.error(self.request, 'خطا در ثبت‌نام! لطفاً اطلاعات را بررسی کنید.')
         return super().form_invalid(form)
     
@@ -95,7 +111,6 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset
- 
  
 # ==========================================================================
 # پنل کاربری با ورود واقعی (شماره/ایمیل + رمز عبور)

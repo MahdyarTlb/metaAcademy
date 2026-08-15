@@ -40,16 +40,23 @@ class StudentForm(forms.ModelForm):
         self.fields['phone_number'].error_messages = {
             'required': 'شماره تلفن الزامی است.'
         }
+        self.existing_student = None
 
     def clean(self):
         cleaned_data = super().clean()
         p1 = cleaned_data.get('password1')
         p2 = cleaned_data.get('password2')
+        phone = cleaned_data.get('phone_number')
 
         if p1 and len(p1) < 6:
             self.add_error('password1', 'رمز عبور باید حداقل ۶ کاراکتر باشد.')
         if p1 and p2 and p1 != p2:
             self.add_error('password2', 'رمز عبور و تکرار آن یکسان نیستند.')
+        if phone:
+            existing_student = Student.objects.filter(phone_number=phone).first()
+            if existing_student:
+                self.add_error('phone_number', 'این شماره موبایل قبلاً ثبت شده است.')
+                self.existing_student = existing_student
         return cleaned_data
 
     def save(self, commit=True):
@@ -70,7 +77,6 @@ class CheckForm(forms.Form):
             'class': 'check-input',
         })
     )
-
 
 class SetPasswordForm(forms.Form):
     password1 = forms.CharField(

@@ -4,17 +4,6 @@
 {% block title %}ثبت‌نام موفق — متا آکادمی{% endblock %}
 
 {% block content %}
-
-  {% if messages %}
-    <div class="messages-wrap container">
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }}">
-          <span class="alert-icon" aria-hidden="true">{% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}!{% else %}i{% endif %}</span>
-          <span class="alert-text">{{ message }}</span>
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
   <br><br>
     <!-- ==========================================================
           کارت اصلی 
@@ -309,7 +298,7 @@
           justify-content: center;
           padding-top: 4px;
         ">
-          <a href="{% url 'core:home' %}" class="btn btn-primary" style="
+          <a href="{% url 'core:check_view' %}" class="btn btn-primary" style="
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -325,7 +314,7 @@
             box-shadow: 0 6px 16px rgba(255, 107, 53, 0.35);
             cursor: pointer;
           " onmouseover="this.style.transform='scale(1.03)'; this.style.boxShadow='0 10px 24px rgba(255,107,53,0.45)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 6px 16px rgba(255,107,53,0.35)'">
-            ← بازگشت به خانه
+            ← پروفایل کاربری
           </a>
           <a href="{% url 'core:register' %}" class="btn btn-ghost" style="
             display: inline-flex;
