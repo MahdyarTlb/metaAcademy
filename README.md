@@ -18,7 +18,7 @@
       <td align="center"><img src="images/5.png" width="200" /></td>
       <td align="center"><img src="images/6.png" width="200" /></td>
       <td align="center"><img src="images/7.png" width="200" /></td>
-      <td align="center"><img src="images/8.png" hright="150" /></td>
+      <td align="center"><img src="images/9.png" width="200" /></td>
     </tr>
   </table>
 </p>
