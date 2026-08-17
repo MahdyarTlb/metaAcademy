@@ -102,6 +102,7 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['total_count'] = Student.objects.count()
+        context['certificate_count'] = Student.objects.filter(national_code__isnull=False).count()
         context['title'] = 'لیست دانش‌آموزان'
         return context
     
