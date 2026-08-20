@@ -426,11 +426,11 @@ def export_excel(request):
     ws.title = 'دانش‌آموزان'
     
     # استایل‌ها
-    header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
+    header_font = Font(name='Bidad', size=12, bold=True, color='FFFFFF')
     header_fill = PatternFill(start_color='4CAF50', end_color='4CAF50', fill_type='solid')
     header_alignment = Alignment(horizontal='center', vertical='center')
     
-    cell_font = Font(name='B Nazanin', size=11)
+    cell_font = Font(name='Bidad', size=11)
     cell_alignment = Alignment(horizontal='center', vertical='center')
     
     border = Border(
@@ -441,7 +441,7 @@ def export_excel(request):
     )
     
     # هدرها
-    headers = ['ردیف', 'نام و نام خانوادگی', 'سن', 'شماره تلفن', 'رشته تحصیلی', 'مدرسه', 'شهر', 'معرف', 'تاریخ ثبت']
+    headers = ['ردیف', 'نام و نام خانوادگی', 'سن', 'شماره تلفن', 'کدملی', 'رشته تحصیلی', 'مدرسه', 'شهر', 'معرف', 'تاریخ ثبت']
     
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
@@ -456,12 +456,13 @@ def export_excel(request):
         ws.cell(row=row, column=2, value=student.name).border = border
         ws.cell(row=row, column=3, value=student.age).border = border
         ws.cell(row=row, column=4, value=student.phone_number).border = border
-        ws.cell(row=row, column=5, value=student.reshte).border = border  # ← مستقیم و بدون تغییر
-        ws.cell(row=row, column=6, value=student.school).border = border
-        ws.cell(row=row, column=7, value=student.city).border = border
-        ws.cell(row=row, column=8, value=student.moaref or '').border = border
+        ws.cell(row=row, column=5, value=student.national_code).border = border
+        ws.cell(row=row, column=6, value=student.reshte).border = border  # ← مستقیم و بدون تغییر
+        ws.cell(row=row, column=7, value=student.school).border = border
+        ws.cell(row=row, column=8, value=student.city).border = border
+        ws.cell(row=row, column=9, value=student.moaref or '').border = border
         created_at_local = timezone.localtime(student.created_at)
-        ws.cell(row=row, column=9, value=created_at_local.strftime('%Y/%m/%d %H:%M')).border = border
+        ws.cell(row=row, column=10, value=created_at_local.strftime('%Y/%m/%d %H:%M')).border = border
         
         for col in range(1, 10):
             ws.cell(row=row, column=col).font = cell_font
@@ -470,7 +471,7 @@ def export_excel(request):
     # عرض ستون‌ها
     column_widths = {
         'A': 8, 'B': 25, 'C': 10, 'D': 18, 
-        'E': 25, 'F': 25, 'G': 15, 'H': 20, 'I': 20
+        'E': 18, 'F': 25, 'G': 25, 'H': 15, 'I': 20, 'J': 20
     }
     for col, width in column_widths.items():
         ws.column_dimensions[col].width = width
@@ -516,6 +517,8 @@ def import_excel(request):
                             col_index['age'] = idx
                         elif 'تلفن' in header_str or 'شماره' in header_str:
                             col_index['phone'] = idx
+                        elif 'کدملی' in header_str:
+                            col_index['national_code'] = idx
                         elif 'رشته' in header_str:
                             col_index['reshte'] = idx
                         elif 'مدرسه' in header_str:
@@ -546,6 +549,7 @@ def import_excel(request):
                         name = str(row[col_index['name']]).strip() if row[col_index['name']] else ''
                         age = int(row[col_index['age']]) if row[col_index['age']] else None
                         phone_number = str(row[col_index['phone']]).strip() if row[col_index['phone']] else ''
+                        national_code = str(row[col_index['national_code']]).strip() if row[col_index['national_code']] else ''
                         reshte = str(row[col_index['reshte']]).strip() if row[col_index['reshte']] else ''
                         school = str(row[col_index['school']]).strip() if row[col_index['school']] else ''
                         city = str(row[col_index['city']]).strip() if row[col_index['city']] else ''
@@ -587,6 +591,7 @@ def import_excel(request):
                             name=name,
                             age=age,
                             phone_number=phone_number,
+                            national_code=national_code,
                             reshte=reshte,
                             school=school,
                             city=city,
