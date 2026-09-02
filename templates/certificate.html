@@ -35,23 +35,6 @@
       </div>
     </div>
 
-    {# ---------- نمایش پیام‌های موفقیت/خطا ---------- #}
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% endif %}" 
-             style="padding: 14px 18px; border-radius: var(--radius-sm); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; 
-                    {% if message.tags == 'success' %}background: #e8f5e9; border-right: 4px solid #4caf50; color: #2e7d32;
-                    {% elif message.tags == 'error' %}background: #ffebee; border-right: 4px solid #f44336; color: #c62828;
-                    {% endif %}">
-          <span style="font-size: 1.2rem;">
-            {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% endif %}
-          </span>
-          {{ message }}
-          <button type="button" onclick="this.parentElement.style.display='none'" style="margin-right: auto; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: inherit;">✕</button>
-        </div>
-      {% endfor %}
-    {% endif %}
-
     {# ---------- فرم ویرایش اطلاعات ---------- #}
     <div class="check-panel-grid">
       
@@ -93,14 +76,21 @@
               <small style="color: var(--text-faint); font-size: 0.8rem;">کد ملی باید ۱۰ رقم باشد (مثال: ۱۲۳۴۵۶۷۸۹۰)</small>
             </div>
 
-            {# دکمه‌های اقدام #}
             <div class="check-actions" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
-              <button type="submit" class="btn btn-primary check-action-btn" style="flex: 1; min-width: 140px;">
-                💾 ذخیره اطلاعات
-              </button>
-              <a href="{% url 'core:check_view' %}" class="btn btn-ghost check-action-btn" style="flex: 1; min-width: 140px; text-align: center;">
-                ↩️ بازگشت به پنل
-              </a>
+                {% if student.certificate_file and student.is_certified %}
+                    {# اگر مدرک وجود دارد، دکمه غیرفعال و پیام نمایش داده شود #}
+                    <div style="width: 100%; padding: 12px; background: rgba(76, 175, 80, 0.1); border: 2px solid #4caf50; border-radius: var(--radius-sm); text-align: center; color: #4caf50; font-weight: 600;">
+                        ✅ مدرک شما قبلاً ساخته شده است. در صورت نیاز به ویرایش اطلاعات، با <span class="channel-badge telegram">پشتیبانی</span>
+                    <a href="https://t.me/metanix_admin1" target="_blank" class="channel-link">تلگرام</a> تماس بگیرید.
+                    </div>
+                {% else %}
+                    <button type="submit" class="btn btn-primary check-action-btn" style="flex: 1; min-width: 140px;">
+                        💾 ذخیره اطلاعات
+                    </button>
+                {% endif %}
+                <a href="{% url 'core:check_view' %}" class="btn btn-ghost check-action-btn" style="flex: 1; min-width: 140px; text-align: center;">
+                    ↩️ بازگشت به پنل
+                </a>
             </div>
           </form>
         </div>
@@ -126,19 +116,53 @@
       {# ========== ستون راست: پیش‌نمایش مدرک (آماده برای آینده) ========== #}
       <div class="check-sidebar" style="display: flex; flex-direction: column; gap: 24px;">
         
-        {# ---------- کارت پیش‌نمایش مدرک ---------- #}
-        <div class="mascot-card" style="background: linear-gradient(145deg, #1a1a2e, #16213e); border: 2px solid var(--gold);">
-          <span class="mascot-glow" style="background: radial-gradient(circle, rgba(255,215,0,0.1), transparent 70%);"></span>
-          <div style="font-size: 4rem; margin-bottom: 8px;">🎓</div>
-          <div class="mascot-title" style="color: var(--gold);">پیش‌نمایش مدرک</div>
-          <div class="mascot-sub" style="color: rgba(255,255,255,0.6);">
-            پس از تکمیل اطلاعات، مدرک شما در این بخش نمایش داده می‌شود
-          </div>
-          <div style="margin-top: 16px; padding: 12px 20px; background: rgba(255,215,0,0.1); border-radius: var(--radius-sm); border: 1px dashed var(--gold); width: 100%; text-align: center;">
-            <span style="color: var(--gold); font-size: 0.9rem; font-weight: 600;">✨ به زودی ✨</span>
-          </div>
-        </div>
+      {# ---------- کارت پیش‌نمایش مدرک ---------- #}
+        <div class="mascot-card" style="background: linear-gradient(145deg, #1a1a2e, #16213e); border: 2px solid var(--gold); position: relative; padding: 20px 20px 16px;">
+            <span class="mascot-glow" style="background: radial-gradient(circle, rgba(255,215,0,0.1), transparent 70%);"></span>
+            
+            {# هدر با آیکون کوچک‌تر و فاصله کم #}
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                <span style="font-size: 2rem; line-height: 1;">🎓</span>
+                <div class="mascot-title" style="color: var(--gold); font-size: 1.1rem; font-weight: 600; margin: 0;">پیش‌نمایش مدرک</div>
+            </div>
+            
+            {# توضیح با فاصله کم #}
+            <div class="mascot-sub" style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 12px;">
+                {% if certificate_url %}
+                    ✅ مدرک شما با موفقیت تولید شد
+                {% else %}
+                    پس از تکمیل اطلاعات، مدرک شما در این بخش نمایش داده می‌شود
+                {% endif %}
+            </div>
 
+            {% if certificate_url %}
+                {# تصویر مدرک با دکمه شفاف روی آن #}
+                <div style="position: relative; width: 100%; border-radius: var(--radius-sm); overflow: hidden; border: 2px solid var(--gold);">
+                    <img src="{{ certificate_url }}" alt="مدرک شما" style="width:100%; display: block;">
+                    
+                    {# دکمه دانلود شفاف روی تصویر - وسط پایین #}
+                    <a href="{{ certificate_url }}" download 
+                      style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); 
+                              background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+                              color: #fff; padding: 8px 20px; border-radius: 30px; 
+                              text-decoration: none; font-weight: 600; font-size: 0.9rem;
+                              border: 1px solid rgba(255,215,0,0.3);
+                              transition: all 0.3s ease;
+                              display: inline-flex; align-items: center; gap: 8px;
+                              white-space: nowrap;"
+                      onmouseover="this.style.background='rgba(255,215,0,0.2)'; this.style.borderColor='var(--gold)';"
+                      onmouseout="this.style.background='rgba(0,0,0,0.65)'; this.style.borderColor='rgba(255,215,0,0.3)';">
+                        ⬇️ دانلود مدرک
+                    </a>
+                </div>
+            {% else %}
+                {# حالت پیش‌فرض (بدون مدرک) #}
+                <div style="padding: 30px 20px; background: rgba(255,215,0,0.05); border-radius: var(--radius-sm); border: 1px dashed var(--gold); width: 100%; text-align: center;">
+                    <span style="color: var(--gold); font-size: 0.9rem; font-weight: 600;">✨ پس از ثبت اطلاعات، مدرک ساخته می‌شود ✨</span>
+                </div>
+            {% endif %}
+        </div>
+      
         {# ---------- کارت اطلاعات تکمیلی ---------- #}
         <div class="check-card" style="background: var(--surface);">
           <div class="card-title"><span class="icon">📌</span> نکات مهم</div>
@@ -161,7 +185,7 @@
             </div>
             <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm);">
               <span style="color: var(--text-muted);">مدرک</span>
-              <span style="color: var(--gold); font-weight: 700;">در انتظار تکمیل دوره</span>
+              <span style="color: var(--gold); font-weight: 700;">واجد شرایط</span>
             </div>
           </div>
         </div>

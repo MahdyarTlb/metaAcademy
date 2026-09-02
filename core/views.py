@@ -6,8 +6,9 @@ from django.utils import timezone
 from django.core.validators import ValidationError
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render
-from .models import Student, VideoLink
-from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm
+from .models import Student, VideoLink, Signature
+from .utils import preview_signature_on_template, generate_certificate_for_student
+from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm, PaymentForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.http import HttpResponse, Http404
@@ -349,70 +350,159 @@ class ClassOnlineView(StudentSessionRequiredMixin, TemplateView):
         return context
 
 class CertificateView(View):
-        """
-        نمایش و ویرایش اطلاعات دانشجو برای صدور مدرک
-        - کاربر می‌تواند نام و کد ملی خود را ویرایش کند
-        - اطلاعات به صورت امن در سشن نگهداری می‌شود
-        - در آینده قابلیت پیش‌نمایش و دانلود مدرک اضافه خواهد شد
-        """
-        template_name = 'certificate.html'
+    template_name = 'certificate.html'
+    
+    def get(self, request):
+        # بررسی احراز هویت کاربر
+        student_id = request.session.get('auth_student_id')
+        if not student_id:
+            messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
+            return redirect('core:check')
         
-        def get(self, request):
-            # بررسی احراز هویت کاربر
-            student_id = request.session.get('auth_student_id')
-            if not student_id:
-                messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
-                return redirect('core:check')
-            
-            try:
-                student = Student.objects.get(pk=student_id)
-            except Student.DoesNotExist:
-                request.session.pop('auth_student_id', None)
-                messages.error(request, 'کاربر یافت نشد')
-                return redirect('core:check')
-            
-            # پر کردن فرم با اطلاعات فعلی دانشجو
-            initial_data = {
-                'name': student.name,
-                'national_code': student.national_code,
-            }
-            form = CertificateForm(initial=initial_data)
-            
-            return render(request, self.template_name, {
-                'form': form,
-                'student': student,
-            })
+        try:
+            student = Student.objects.get(pk=student_id)
+        except Student.DoesNotExist:
+            request.session.pop('auth_student_id', None)
+            messages.error(request, 'کاربر یافت نشد')
+            return redirect('core:check')
         
-        def post(self, request):
-            # بررسی احراز هویت
-            student_id = request.session.get('auth_student_id')
-            if not student_id:
-                messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
-                return redirect('core:check')
+        certificate_url = None
+        if student.certificate_file:
+            certificate_url = student.certificate_file.url
             
-            try:
-                student = Student.objects.get(pk=student_id)
-            except Student.DoesNotExist:
-                request.session.pop('auth_student_id', None)
-                messages.error(request, 'کاربر یافت نشد')
-                return redirect('core:check')
+        # پر کردن فرم با اطلاعات فعلی دانشجو
+        initial_data = {
+            'name': student.name,
+            'national_code': student.national_code,
+        }
+        form = CertificateForm(initial=initial_data)
+        
+        return render(request, self.template_name, {
+            'form': form,
+            'student': student,
+            'certificate_url': certificate_url,
+        })
+    
+    def post(self, request):
+        # بررسی احراز هویت
+        student_id = request.session.get('auth_student_id')
+        if not student_id:
+            messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
+            return redirect('core:check')
+        
+        try:
+            student = Student.objects.get(pk=student_id)
+        except Student.DoesNotExist:
+            request.session.pop('auth_student_id', None)
+            messages.error(request, 'کاربر یافت نشد')
+            return redirect('core:check')
+        
+        if student.certificate_file and student.is_certified:
+            messages.error(request, '❌ مدرک شما قبلاً ساخته شده است و قابل ویرایش نیست.')
+            return redirect('core:certificate')
+        
+        form = CertificateForm(request.POST)
+        
+        if form.is_valid():
+            # ذخیره اطلاعات در دیتابیس
+            student.name = form.cleaned_data['name']
+            student.national_code = form.cleaned_data['national_code']
+            student.save()
             
-            form = CertificateForm(request.POST)
-            
-            if form.is_valid():
-                # ذخیره اطلاعات در دیتابیس
-                student.name = form.cleaned_data['name']
-                student.national_code = form.cleaned_data['national_code']
-                student.save()
-                
-                messages.success(request, 'اطلاعات با موفقیت به‌روزرسانی شد')
-                return redirect('core:certificate')
-            
-            # در صورت نامعتبر بودن فرم
-            return render(request, self.template_name, {
-                'form': form,
-                'student': student,
-            })
+            if student.is_certified:
+                try:
+                    cert_content = generate_certificate_for_student(student)
+                    student.certificate_file.save(cert_content.name, cert_content, save=True)
+                    messages.success(request, '✅ مدرک شما آماده شد.')
+                except Exception as e:
+                    messages.error(request, f'خطا در ساخت مدرک: هنوز واجد شرایط دریافت گواهی نیستید!.')
+            else:
+                return redirect('core:payment')
+
+            return redirect('core:certificate')
+
+        # در صورت نامعتبر بودن فرم
+        return render(request, self.template_name, {
+            'form': form,
+            'student': student,
+        })
+        
+def admin_dashboard(request):
+    # ========== آمار ==========
+    total_students = Student.objects.count()
+    has_signature = Signature.objects.exists()
+    
+     # ========== پردازش آپلود امضا ==========
+    if request.method == 'POST' and request.FILES.get('signature_image'):
+        sig, created = Signature.objects.get_or_create(user=request.user)
+        sig.image = request.FILES['signature_image']
+        sig.save()
+        messages.success(request, '✅ امضا با موفقیت آپلود شد')
+        return redirect('core:admin_dashboard')
+    
+    # ========== ساخت پیشنمایش (فقط روی قالب خالی) ==========
+    preview_image_url = None
+    signature = Signature.objects.first()
+    
+    if signature:
+        try:
+            preview_image_url = preview_signature_on_template(
+                signature.image.path,
+                'static/img/certificate_template.jpg'
+            )
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            print(f"خطای پیشنمایش: {error_detail}")
+            messages.error(request, f'خطا در ساخت پیشنمایش: {e}')
+    
+    context = {
+        'total_students': total_students,
+        'has_signature': has_signature,
+        'signature': signature,
+        'preview_image_url': preview_image_url,
+    }
+    return render(request, 'admin_dashboard.html', context)
+
+def payment_request_view(request):
+    student_id = request.session.get('auth_student_id')
+    if not student_id:
+        messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
+        return redirect('core:check')
+
+    try:
+        student = Student.objects.get(pk=student_id)
+    except Student.DoesNotExist:
+        request.session.pop('auth_student_id', None)
+        messages.error(request, 'کاربر یافت نشد')
+        return redirect('core:check')
+
+    # اگر قبلاً تایید شده
+    if student.is_certified:
+        messages.info(request, 'شما قبلاً پرداخت خود را ثبت کرده‌اید و مدرک شما فعال است.')
+        return redirect('core:certificate')
+
+    # اگر قبلاً درخواست داده ولی هنوز تایید نشده
+    if hasattr(student, 'payment_request'):
+        messages.warning(request, 'درخواست شما قبلاً ثبت شده و در انتظار تأیید است.')
+        return redirect('core:certificate')
+
+    if request.method == 'POST':
+        form = PaymentForm(request.POST)
+        
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.student = student
+            payment.save()
+            messages.success(request, '✅ درخواست شما ثبت شد. پس از تأیید واحد حسابداری، مدرک شما فعال می‌شود.')
+            return redirect('core:certificate')
+    else:
+        form = PaymentForm()
+
+    return render(request, 'payment.html', {
+        'form': form,
+        'student': student
+    })
     
 @staff_member_required
 def export_excel(request):

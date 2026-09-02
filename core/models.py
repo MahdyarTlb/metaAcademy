@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator, EmailValidator
+from django.contrib.auth.models import User
+
 
 class Student(models.Model):
     name = models.CharField(
@@ -61,6 +63,8 @@ class Student(models.Model):
     
     is_certified = models.BooleanField(default=False)
     
+    certificate_file = models.ImageField(upload_to='certificates/', blank=True, null=True, verbose_name='مدرک نهایی')
+    
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='تاریخ ثبت'
@@ -78,6 +82,23 @@ class Student(models.Model):
     def __str__(self):
         return self.name
 
+class Signature(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='signature')
+    image = models.ImageField(upload_to='signatures/', verbose_name='عکس امضا')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.user.username
+
+class PaymentRequest(models.Model):
+    student = models.OneToOneField(Student, on_delete=models.CASCADE, related_name='payment_request')
+    tracking_code = models.CharField(max_length=50, verbose_name='کد پیگیری')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.name} - {self.tracking_code}"
+
+    
 class VideoLink(models.Model):
     session_id = models.IntegerField(unique=True, verbose_name="شماره جلسه")
     video_url = models.URLField(blank=True, null=True, verbose_name="لینک ویدیو")

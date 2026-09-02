@@ -20,4 +20,7 @@ urlpatterns = [
     
     path('classes/offline/', views.ClassOfflineView.as_view(), name='class_offline'),
     path('classes/online/<int:session_number>/', views.ClassOnlineView.as_view(), name='class_online'),
+    
+    path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('payment/', views.payment_request_view, name='payment'),
 ]

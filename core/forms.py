@@ -1,5 +1,5 @@
 from django import forms
-from .models import Student
+from .models import Student, PaymentRequest
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 
@@ -159,3 +159,18 @@ class CertificateForm(forms.Form):
             raise ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد')
         
         return national_code
+    
+class PaymentForm(forms.ModelForm):
+    class Meta:
+        model = PaymentRequest
+        fields = ['tracking_code']
+        widgets = {
+            'tracking_code': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'مثلاً 1234567890',
+                'dir': 'ltr'
+            })
+        }
+        labels = {
+            'tracking_code': 'کد پیگیری پرداخت'
+        }
