@@ -20,7 +20,7 @@ def to_persian_digits(text):
 def prepare_persian_text(text):
     """آماده‌سازی متن فارسی برای Pillow"""
     reshaped = arabic_reshaper.reshape(str(text))
-    return get_display(reshaped)
+    return get_display(reshaped)[::-1]
 
 
 def load_font(size, weight=400):
