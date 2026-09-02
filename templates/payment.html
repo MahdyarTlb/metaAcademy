@@ -19,13 +19,17 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 1px;">شماره کارت</div>
-                    <div style="color: #fff; font-size: 1.6rem; font-weight: 700; direction: ltr; letter-spacing: 2px; font-family: monospace;">6037-9918-1234-5678</div>
+                    <div style="color: #fff; font-size: 1.6rem; font-weight: 700; direction: ltr; letter-spacing: 2px; font-family: monospace;" id="cardNumber">6219-8619-9587-9706</div>
                     <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
-                        <span style="color: var(--gold);">مالک:</span> سید ماهدیار حسینی
+                        <span style="color: var(--gold);">به نام:</span> مهدیار طالبی
                     </div>
                 </div>
-                <button onclick="copyCardNumber()" style="background: var(--gold); color: #1a1a2e; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;">
-                    <span>📋</span> کپی شماره
+                <button onclick="copyCardNumber()" 
+                    style="background: rgba(255,215,0,0.1); border: 1px solid var(--gold); color: var(--gold); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px; white-space: nowrap;"
+                    onmouseover="this.style.background='rgba(255,215,0,0.2)'"
+                    onmouseout="this.style.background='rgba(255,215,0,0.1)'"
+                    id="copyButton">
+                    📋 کپی
                 </button>
             </div>
         </div>
@@ -62,17 +66,53 @@
 
 <script>
 function copyCardNumber() {
-    const cardNumber = '6037-9918-1234-5678';
-    navigator.clipboard.writeText(cardNumber).then(() => {
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '✅ کپی شد!';
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-        }, 2000);
-    }).catch(() => {
-        alert('لطفاً شماره را دستی کپی کنید: ' + cardNumber);
-    });
+    const cardNumber = document.getElementById('cardNumber').innerText;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cardNumber.replace(/[\s-]/g, ''))
+            .then(() => {
+                showCopySuccess();
+            })
+            .catch(() => {
+                fallbackCopy(cardNumber);
+            });
+    } else {
+        fallbackCopy(cardNumber);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text.replace(/[\s-]/g, '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+        document.execCommand('copy');
+        showCopySuccess();
+    } catch (err) {
+        alert('کپی کردن انجام نشد. لطفاً دستی کپی کنید.');
+    }
+    
+    document.body.removeChild(textarea);
+}
+
+function showCopySuccess() {
+    const button = document.getElementById('copyButton');
+    const originalText = button.innerHTML;
+    button.innerHTML = '✅ کپی شد!';
+    button.style.background = 'rgba(76, 175, 80, 0.2)';
+    button.style.borderColor = '#4caf50';
+    button.style.color = '#4caf50';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.background = 'rgba(255,215,0,0.1)';
+        button.style.borderColor = 'var(--gold)';
+        button.style.color = 'var(--gold)';
+    }, 2000);
 }
 </script>
 
