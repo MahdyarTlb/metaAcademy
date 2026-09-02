@@ -116,8 +116,8 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/public/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'public', 'media')
 
 CSRF_TRUSTED_ORIGINS = [
     'https://mtaacademy.ir',
