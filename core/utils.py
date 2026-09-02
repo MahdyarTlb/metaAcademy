@@ -76,7 +76,7 @@ def draw_centered_text(draw, text, center_x, y, font, fill='black'):
 
 def generate_certificate_for_student(
     student,
-    base_template_path='media/preview/preview_signature.jpg'
+    base_template_path='public/media/preview/preview_signature.jpg'
 ):
     """
     ساخت مدرک دانشجو.
