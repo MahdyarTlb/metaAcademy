@@ -52,7 +52,7 @@ def load_font(size, weight=400):
     return font
 
 
-def draw_centered_text(draw, text, center_x, y, font, fill='black'):
+def draw_centered_text(draw, text, center_x, y, font, fill='black', direction=None):
     """
     متن را حول یک نقطه X مشخص، به صورت وسط‌چین قرار می‌دهد.
     """
@@ -67,12 +67,21 @@ def draw_centered_text(draw, text, center_x, y, font, fill='black'):
 
     x = center_x - (text_width / 2)
 
-    draw.text(
-        (x, y),
-        text,
-        fill=fill,
-        font=font
-    )
+    if direction:
+        draw.text(
+            (x, y),
+            text,
+            fill=fill,
+            font=font,
+            direction=direction
+        )
+    else:
+        draw.text(
+            (x, y),
+            text,
+            fill=fill,
+            font=font,
+        )
 
 def generate_certificate_for_student(
     student,
