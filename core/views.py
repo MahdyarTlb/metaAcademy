@@ -531,7 +531,7 @@ def export_excel(request):
     )
     
     # هدرها
-    headers = ['ردیف', 'نام و نام خانوادگی', 'سن', 'شماره تلفن', 'کدملی', 'رشته تحصیلی', 'مدرسه', 'شهر', 'معرف', 'تاریخ ثبت']
+    headers = ['ردیف', 'نام و نام خانوادگی', 'سن', 'شماره تلفن', 'کدملی', 'is_certified', 'رشته تحصیلی', 'مدرسه', 'شهر', 'معرف', 'تاریخ ثبت']
     
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
@@ -547,21 +547,22 @@ def export_excel(request):
         ws.cell(row=row, column=3, value=student.age).border = border
         ws.cell(row=row, column=4, value=student.phone_number).border = border
         ws.cell(row=row, column=5, value=student.national_code).border = border
-        ws.cell(row=row, column=6, value=student.reshte).border = border  # ← مستقیم و بدون تغییر
-        ws.cell(row=row, column=7, value=student.school).border = border
-        ws.cell(row=row, column=8, value=student.city).border = border
-        ws.cell(row=row, column=9, value=student.moaref or '').border = border
+        ws.cell(row=row, column=6, value=student.is_certified).border = border
+        ws.cell(row=row, column=7, value=student.reshte).border = border
+        ws.cell(row=row, column=8, value=student.school).border = border
+        ws.cell(row=row, column=9, value=student.city).border = border
+        ws.cell(row=row, column=10, value=student.moaref or '').border = border
         created_at_local = timezone.localtime(student.created_at)
-        ws.cell(row=row, column=10, value=created_at_local.strftime('%Y/%m/%d %H:%M')).border = border
+        ws.cell(row=row, column=11, value=created_at_local.strftime('%Y/%m/%d %H:%M')).border = border
         
-        for col in range(1, 10):
+        for col in range(1, 12):
             ws.cell(row=row, column=col).font = cell_font
             ws.cell(row=row, column=col).alignment = cell_alignment
     
     # عرض ستون‌ها
     column_widths = {
         'A': 8, 'B': 25, 'C': 10, 'D': 18, 
-        'E': 18, 'F': 25, 'G': 25, 'H': 15, 'I': 20, 'J': 20
+        'E': 18, 'F':15, 'G': 25, 'H': 25, 'I': 15, 'J': 20, 'K': 20
     }
     for col, width in column_widths.items():
         ws.column_dimensions[col].width = width
@@ -609,6 +610,8 @@ def import_excel(request):
                             col_index['phone'] = idx
                         elif 'کدملی' in header_str:
                             col_index['national_code'] = idx
+                        elif 'is_certified' in header_str:
+                            col_index['is_certified'] = idx
                         elif 'رشته' in header_str:
                             col_index['reshte'] = idx
                         elif 'مدرسه' in header_str:
@@ -621,7 +624,7 @@ def import_excel(request):
                             col_index['created_at'] = idx
                 
                 # بررسی وجود ستون‌های ضروری
-                required = ['name', 'age', 'phone', 'reshte', 'school', 'city']
+                required = ['name', 'age', 'phone', 'national_code', 'is_certified', 'reshte', 'school', 'city']
                 for field in required:
                     if field not in col_index:
                         messages.error(request, f'❌ ستون "{field}" در فایل پیدا نشد!')
@@ -639,7 +642,8 @@ def import_excel(request):
                         name = str(row[col_index['name']]).strip() if row[col_index['name']] else ''
                         age = int(row[col_index['age']]) if row[col_index['age']] else None
                         phone_number = str(row[col_index['phone']]).strip() if row[col_index['phone']] else ''
-                        national_code = str(row[col_index['national_code']]).strip() if row[col_index['national_code']] else ''
+                        national_code = str(row[col_index['national_code']]).strip() if row[col_index['national_code']] else None
+                        is_certified = bool(row[col_index['is_certified']])
                         reshte = str(row[col_index['reshte']]).strip() if row[col_index['reshte']] else ''
                         school = str(row[col_index['school']]).strip() if row[col_index['school']] else ''
                         city = str(row[col_index['city']]).strip() if row[col_index['city']] else ''
@@ -675,6 +679,10 @@ def import_excel(request):
                             school = 'ثبت نشده'
                         if not city:
                             city = 'ثبت نشده'
+                        if is_certified == 'False':
+                            is_certified = False
+                        elif is_certified == 'True':
+                            is_certified = True
                         
                         # ایجاد شیء دانش‌آموز
                         student = Student(
@@ -682,6 +690,7 @@ def import_excel(request):
                             age=age,
                             phone_number=phone_number,
                             national_code=national_code,
+                            is_certified=is_certified,
                             reshte=reshte,
                             school=school,
                             city=city,
