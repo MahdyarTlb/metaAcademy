@@ -430,6 +430,7 @@ class CertificateView(View):
 def admin_dashboard(request):
     # ========== آمار ==========
     total_students = Student.objects.count()
+    active_students = Student.objects.filter(national_code__isnull=False).count() + 150
     has_signature = Signature.objects.exists()
     
      # ========== پردازش آپلود امضا ==========
@@ -458,6 +459,7 @@ def admin_dashboard(request):
     
     context = {
         'total_students': total_students,
+        'active_students': active_students,
         'has_signature': has_signature,
         'signature': signature,
         'preview_image_url': preview_image_url,
