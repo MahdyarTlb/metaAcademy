@@ -165,7 +165,6 @@ class CheckView(View):
         form = CheckForm()
         return render(request, self.template_name, {'form': form})
     
-    @method_decorator(csrf_exempt) 
     def post(self, request):
         form = CheckForm(request.POST)
         context = {'form': form}
