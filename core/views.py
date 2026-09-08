@@ -19,6 +19,20 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 
+def csrf_failure(request, reason=""):
+    print("\n========== CSRF FAILURE ==========")
+    print("PATH:", request.path)
+    print("METHOD:", request.method)
+    print("USER_AGENT:", request.META.get("HTTP_USER_AGENT"))
+    print("HTTP_COOKIE:", request.META.get("HTTP_COOKIE"))
+    print("COOKIES:", request.COOKIES)
+    print("CSRF_COOKIE:", request.COOKIES.get("csrftoken"))
+    print("REASON:", reason)
+    print("==================================\n")
+
+    from django.http import HttpResponseForbidden
+    return HttpResponseForbidden("CSRF FAILED")
+
 class HomeView(TemplateView):
     template_name = 'home.html'
     
@@ -153,11 +167,6 @@ class CheckView(View):
     
     @method_decorator(csrf_exempt) 
     def post(self, request):
-        print("========== CSRF DEBUG ==========")
-        print("User-Agent:", request.META.get("HTTP_USER_AGENT"))
-        print("Cookie:", request.META.get("HTTP_COOKIE"))
-        print("CSRF_COOKIE:", request.COOKIES.get("csrftoken"))
-        print("=================================")
         form = CheckForm(request.POST)
         context = {'form': form}
  
