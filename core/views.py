@@ -15,7 +15,7 @@ from django.http import HttpResponse, Http404
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
 from django.db import IntegrityError
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 
@@ -150,7 +150,8 @@ class CheckView(View):
  
         form = CheckForm()
         return render(request, self.template_name, {'form': form})
- 
+    
+    @method_decorator(csrf_exempt) 
     def post(self, request):
         form = CheckForm(request.POST)
         context = {'form': form}
