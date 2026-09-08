@@ -119,6 +119,8 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/public/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'public', 'media')
 
+CSRF_COOKIE_SAMESITE = 'Lax'
+
 CSRF_TRUSTED_ORIGINS = [
     'https://mtaacademy.ir',
     'http://mtaacademy.ir',
@@ -156,4 +158,5 @@ MESSAGE_TAGS = {
 LOGIN_URL = '/admins/admin/login/'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
