@@ -153,6 +153,11 @@ class CheckView(View):
     
     @method_decorator(csrf_exempt) 
     def post(self, request):
+        print("========== CSRF DEBUG ==========")
+        print("User-Agent:", request.META.get("HTTP_USER_AGENT"))
+        print("Cookie:", request.META.get("HTTP_COOKIE"))
+        print("CSRF_COOKIE:", request.COOKIES.get("csrftoken"))
+        print("=================================")
         form = CheckForm(request.POST)
         context = {'form': form}
  
