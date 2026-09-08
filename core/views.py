@@ -15,7 +15,10 @@ from django.http import HttpResponse, Http404
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
 from django.db import IntegrityError
- 
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+
 class HomeView(TemplateView):
     template_name = 'home.html'
     
@@ -127,7 +130,8 @@ class CheckView(View):
     - اگر رمز عبور داشته باشد، به صفحه‌ی «ورود با رمز عبور» هدایت می‌شود.
     """
     template_name = 'check.html'
- 
+    
+    @method_decorator(ensure_csrf_cookie)
     def get(self, request):
         # امکان خروج از مرحله‌ی رمز عبور و بازگشت به فرم اولیه با ?reset=1
         if request.GET.get('reset'):
@@ -426,7 +430,7 @@ class CertificateView(View):
             'form': form,
             'student': student,
         })
-        
+@login_required(login_url="/admins/admin")
 def admin_dashboard(request):
     # ========== آمار ==========
     total_students = Student.objects.count()
