@@ -123,9 +123,7 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 
 CSRF_TRUSTED_ORIGINS = [
     'https://mtaacademy.ir',
-    'http://mtaacademy.ir',
     'https://www.mtaacademy.ir',
-    'http://www.mtaacademy.ir',
 ]
 
 # ============================================
