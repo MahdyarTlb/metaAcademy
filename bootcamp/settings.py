@@ -124,6 +124,8 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'https://mtaacademy.ir',
     'https://www.mtaacademy.ir',
+    'http://mtaacademy.ir',
+    'http://www.mtaacademy.ir',
 ]
 
 # ============================================
@@ -157,6 +159,6 @@ LOGIN_URL = '/admins/admin/login/'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_FAILURE_VIEW = 'core.views.csrf_failure'

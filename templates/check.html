@@ -32,7 +32,7 @@
       <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 1.02rem;">
         شماره موبایل یا ایمیل خود را وارد کنید تا اطلاعات ثبت‌نام شما نمایش داده شود.
       </p>
-      <form method="post" action="{% url 'core:check_view' %}" class="check-form">
+      <form method="post" action="" class="check-form">
         {% csrf_token %}
         <div class="check-field">
           {{ form.identifier }}
