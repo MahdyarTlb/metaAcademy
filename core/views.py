@@ -134,8 +134,6 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 # ==========================================================================
 # پنل کاربری با ورود واقعی (شماره/ایمیل + رمز عبور)
 # ==========================================================================
-
-@method_decorator(csrf_exempt, name='dispatch')
 class CheckView(View):
     """
     مرحله‌ی اول ورود: گرفتن شماره موبایل یا ایمیل.
@@ -199,7 +197,7 @@ class PendingStudentMixin:
         if not student_id:
             return None
         return Student.objects.filter(pk=student_id).first()
- 
+    
 class SetPasswordView(PendingStudentMixin, View):
     """تعیین رمز عبور برای اولین بار (کاربرانی که قبل از این قابلیت ثبت‌نام کرده‌اند)."""
     template_name = 'check_password.html'
@@ -233,7 +231,7 @@ class SetPasswordView(PendingStudentMixin, View):
             return redirect('core:check_view')
  
         return render(request, self.template_name, {'form': form, 'mode': 'set', 'student': student})
-
+    
 class LoginPasswordView(PendingStudentMixin, View):
     """ورود با رمز عبور برای کاربرانی که قبلاً رمز تعیین کرده‌اند."""
     template_name = 'check_password.html'
