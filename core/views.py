@@ -134,7 +134,8 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 # ==========================================================================
 # پنل کاربری با ورود واقعی (شماره/ایمیل + رمز عبور)
 # ==========================================================================
- 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class CheckView(View):
     """
     مرحله‌ی اول ورود: گرفتن شماره موبایل یا ایمیل.
@@ -145,7 +146,6 @@ class CheckView(View):
     """
     template_name = 'check.html'
     
-    @method_decorator(ensure_csrf_cookie)
     def get(self, request):
         # امکان خروج از مرحله‌ی رمز عبور و بازگشت به فرم اولیه با ?reset=1
         if request.GET.get('reset'):
