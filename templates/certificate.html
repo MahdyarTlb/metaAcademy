@@ -1,250 +1,339 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 
-{% block title %}تکمیل اطلاعات مدرک | متا آکادمی{% endblock %}
+{% block title %}مدرک {{ bootcamp.title }} | متا آکادمی{% endblock %}
 
 {% block content %}
-<section class="check-section">
-  <div class="check-container">
+<section class="cert-section">
+  <div class="cert-container">
 
-    {# ---------- هدر پنل ---------- #}
-    <div class="check-panel-header">
-      <div class="check-panel-title">
-        🎓 <span class="greeting">تکمیل اطلاعات مدرک</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
-        {% if student %}
-          <span class="user-status-badge">✅ {{ student.name|default:"کاربر" }}</span>
-        {% endif %}
-        <a href="{% url 'core:check_view' %}" class="btn btn-ghost btn-small">
-          🔙 بازگشت به پنل
-        </a>
-        <a href="{% url 'core:check_logout' %}" class="btn btn-ghost btn-small">🚪 خروج</a>
-      </div>
-    </div>
+    {# بردکرامب #}
+    <nav class="cert-breadcrumb">
+      <a href="{% url 'core:dashboard' %}">پنل کاربری</a>
+      <span>/</span>
+      <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}">{{ bootcamp.title }}</a>
+      <span>/</span>
+      <span class="cert-current">مدرک</span>
+    </nav>
 
-    {# ---------- هشدار راهنما ---------- #}
-    <div class="alert alert-info" style="background: var(--bg-alt); border-right: 4px solid var(--coral); padding: 16px 20px; border-radius: var(--radius-sm); margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px;">
-      <span style="font-size: 1.5rem;">ℹ️</span>
-      <div>
-        <strong style="color: var(--text);">اطلاعات خود را دقیق وارد کنید</strong>
-        <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.95rem;">
-          اطلاعات نام و کد ملی شما دقیقاً مطابق با مدارک شناسایی در مدرک درج خواهد شد.
-          پس از ثبت، امکان ویرایش وجود نخواهد داشت.
+    <div class="cert-card">
+
+      {# ═══════════ حالت ۱: دانلود ═══════════ #}
+      {% if mode == 'download' %}
+        <div class="cert-icon cert-icon-success">🎓</div>
+        <h1 class="cert-title">مدرک شما آماده است</h1>
+        <p class="cert-lead">
+          مدرک دوره‌ی «{{ bootcamp.title }}» با موفقیت صادر شد.
         </p>
-      </div>
-    </div>
 
-    {# ---------- فرم ویرایش اطلاعات ---------- #}
-    <div class="check-panel-grid">
-      
-      {# ========== ستون چپ: فرم ========== #}
-      <div>
-        <div class="check-card">
-          <div class="card-title"><span class="icon">✏️</span> ویرایش اطلاعات</div>
-          
-          <form method="post" class="check-form" style="margin-top: 16px;">
-            {% csrf_token %}
-            
-            {# فیلد نام #}
-            <div class="form-group" style="margin-bottom: 18px;">
-              <label for="{{ form.name.id_for_label }}" style="display: block; color: var(--text); font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">
-                {{ form.name.label }}
-                <span style="color: #f44336;">*</span>
-              </label>
-              {{ form.name }}
-              {% if form.first.errors %}
-                <div style="color: #f44336; font-size: 0.85rem; margin-top: 4px;">
-                  {{ form.name.errors.0 }}
-                </div>
-              {% endif %}
-              <small style="color: var(--text-faint); font-size: 0.8rem;">نام و نام خانوادگی خود را دقیقاً مطابق با شناسنامه وارد کنید</small>
-            </div>
-
-            {# فیلد کد ملی #}
-            <div class="form-group" style="margin-bottom: 22px;">
-              <label for="{{ form.national_code.id_for_label }}" style="display: block; color: var(--text); font-weight: 600; margin-bottom: 6px; font-size: 0.95rem;">
-                {{ form.national_code.label }}
-                <span style="color: #f44336;">*</span>
-              </label>
-              {{ form.national_code }}
-              {% if form.national_code.errors %}
-                <div style="color: #f44336; font-size: 0.85rem; margin-top: 4px;">
-                  {{ form.national_code.errors.0 }}
-                </div>
-              {% endif %}
-              <small style="color: var(--text-faint); font-size: 0.8rem;">کد ملی باید ۱۰ رقم باشد (مثال: ۱۲۳۴۵۶۷۸۹۰)</small>
-            </div>
-
-            <div class="check-actions" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
-                {% if student.certificate_file and student.is_certified %}
-                    {# اگر مدرک وجود دارد، دکمه غیرفعال و پیام نمایش داده شود #}
-                    <div style="width: 100%; padding: 12px; background: rgba(76, 175, 80, 0.1); border: 2px solid #4caf50; border-radius: var(--radius-sm); text-align: center; color: #4caf50; font-weight: 600;">
-                        ✅ مدرک شما قبلاً ساخته شده است. در صورت نیاز به ویرایش اطلاعات، با <span class="channel-badge telegram">پشتیبانی</span>
-                    <a href="https://t.me/metanix_admin1" target="_blank" class="channel-link">تلگرام</a> تماس بگیرید.
-                    </div>
-                {% else %}
-                    <button type="submit" class="btn btn-primary check-action-btn" style="flex: 1; min-width: 140px;">
-                        💾 ذخیره اطلاعات
-                    </button>
-                {% endif %}
-                <a href="{% url 'core:check_view' %}" class="btn btn-ghost check-action-btn" style="flex: 1; min-width: 140px; text-align: center;">
-                    ↩️ بازگشت به پنل
-                </a>
-            </div>
-          </form>
+        <div class="cert-preview">
+          <img src="{{ certificate_url }}" alt="مدرک {{ student.name }}">
         </div>
 
-        {# ---------- کارت اطلاعات فعلی ---------- #}
-        {% if student %}
-        <div class="check-card" style="margin-top: 20px;">
-          <div class="card-title"><span class="icon">👤</span> اطلاعات فعلی شما</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
-            <div style="background: var(--bg-alt); padding: 12px 16px; border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
-              <div style="color: var(--text-muted); font-size: 0.8rem;">نام</div>
-              <div style="color: var(--text); font-weight: 700; font-size: 1rem;">{{ student.name|default:"—" }}</div>
-            </div>
-            <div style="background: var(--bg-alt); padding: 12px 16px; border-radius: var(--radius-sm); border-right: 3px solid var(--coral);">
-              <div style="color: var(--text-muted); font-size: 0.8rem;">کد ملی</div>
-              <div style="color: var(--text); font-weight: 700; font-size: 1rem; direction: ltr;">{{ student.national_code|default:"—" }}</div>
-            </div>
+        <div class="cert-actions">
+          <a href="{{ certificate_url }}" download class="btn btn-primary btn-large">
+            ⬇️ دانلود مدرک
+          </a>
+          <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}" class="btn btn-ghost btn-large">
+            بازگشت به دوره
+          </a>
+        </div>
+
+      {# ═══════════ حالت ۲: در انتظار تأیید پرداخت ═══════════ #}
+      {% elif mode == 'pending' %}
+        <div class="cert-icon cert-icon-pending">⏳</div>
+        <h1 class="cert-title">در انتظار تأیید پرداخت</h1>
+        <p class="cert-lead">
+          درخواست پرداخت شما با کد پیگیری
+          <strong style="color: var(--coral); direction: ltr; display: inline-block;">{{ payment.tracking_code }}</strong>
+          ثبت شده و در حال بررسی است.
+        </p>
+        <div class="cert-info-box">
+          <p>پس از تأیید توسط تیم پشتیبانی، مدرک شما به‌صورت خودکار صادر می‌شود و از همین صفحه قابل دریافت خواهد بود.</p>
+        </div>
+        <div class="cert-actions">
+          <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}" class="btn btn-ghost btn-large">
+            بازگشت به دوره
+          </a>
+        </div>
+
+      {# ═══════════ حالت ۳: هنوز دوره تموم نشده ═══════════ #}
+      {% elif mode == 'not_ready' %}
+        <div class="cert-icon cert-icon-lock">🔒</div>
+        <h1 class="cert-title">هنوز آماده نیست</h1>
+        <p class="cert-lead">
+          مدرک این دوره بعد از برگزاری همه‌ی جلسات فعال می‌شود.
+        </p>
+        <div class="cert-info-box">
+          <div class="cert-info-row">
+            <span>جلسات برگزار شده</span>
+            <strong>{{ enrollment.passed_sessions_count }} از {{ bootcamp.sessions.count }}</strong>
           </div>
         </div>
-        {% endif %}
-      </div>
+        <div class="cert-actions">
+          <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}" class="btn btn-primary btn-large">
+            مشاهده‌ی جلسات
+          </a>
+        </div>
 
-      {# ========== ستون راست: پیش‌نمایش مدرک (آماده برای آینده) ========== #}
-      <div class="check-sidebar" style="display: flex; flex-direction: column; gap: 24px;">
-        
-      {# ---------- کارت پیش‌نمایش مدرک ---------- #}
-        <div class="mascot-card" style="background: linear-gradient(145deg, #1a1a2e, #16213e); border: 2px solid var(--gold); position: relative; padding: 20px 20px 16px;">
-            <span class="mascot-glow" style="background: radial-gradient(circle, rgba(255,215,0,0.1), transparent 70%);"></span>
-            
-            {# هدر با آیکون کوچک‌تر و فاصله کم #}
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-                <span style="font-size: 2rem; line-height: 1;">🎓</span>
-                <div class="mascot-title" style="color: var(--gold); font-size: 1.1rem; font-weight: 600; margin: 0;">پیش‌نمایش مدرک</div>
-            </div>
-            
-            {# توضیح با فاصله کم #}
-            <div class="mascot-sub" style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 12px;">
-                {% if certificate_url %}
-                    ✅ مدرک شما با موفقیت تولید شد
-                {% else %}
-                    پس از تکمیل اطلاعات، مدرک شما در این بخش نمایش داده می‌شود
-                {% endif %}
-            </div>
+      {# ═══════════ حالت ۴: فرم تکمیل اطلاعات ═══════════ #}
+      {% elif mode == 'form' %}
+        <div class="cert-icon">📝</div>
+        <h1 class="cert-title">تکمیل اطلاعات مدرک</h1>
+        <p class="cert-lead">
+          اطلاعات زیر دقیقاً مطابق شناسنامه وارد شود؛ چاپ روی مدرک از همین اطلاعات انجام می‌شود.
+        </p>
 
-            {% if certificate_url %}
-                {# تصویر مدرک با دکمه شفاف روی آن #}
-                <div style="position: relative; width: 100%; border-radius: var(--radius-sm); overflow: hidden; border: 2px solid var(--gold);">
-                    <img src="{{ certificate_url }}" alt="مدرک شما" style="width:100%; display: block;">
-                    
-                    {# دکمه دانلود شفاف روی تصویر - وسط پایین #}
-                    <a href="{{ certificate_url }}" download 
-                      style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); 
-                              background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
-                              color: #fff; padding: 8px 20px; border-radius: 30px; 
-                              text-decoration: none; font-weight: 600; font-size: 0.9rem;
-                              border: 1px solid rgba(255,215,0,0.3);
-                              transition: all 0.3s ease;
-                              display: inline-flex; align-items: center; gap: 8px;
-                              white-space: nowrap;"
-                      onmouseover="this.style.background='rgba(255,215,0,0.2)'; this.style.borderColor='var(--gold)';"
-                      onmouseout="this.style.background='rgba(0,0,0,0.65)'; this.style.borderColor='rgba(255,215,0,0.3)';">
-                        ⬇️ دانلود مدرک
-                    </a>
-                </div>
-            {% else %}
-                {# حالت پیش‌فرض (بدون مدرک) #}
-                <div style="padding: 30px 20px; background: rgba(255,215,0,0.05); border-radius: var(--radius-sm); border: 1px dashed var(--gold); width: 100%; text-align: center;">
-                    <span style="color: var(--gold); font-size: 0.9rem; font-weight: 600;">✨ پس از ثبت اطلاعات، مدرک ساخته می‌شود ✨</span>
-                </div>
+        <form method="post" class="cert-form">
+          {% csrf_token %}
+
+          <div class="cert-field">
+            <label for="{{ form.name.id_for_label }}">
+              {{ form.name.label }}
+            </label>
+            {{ form.name }}
+            {% if form.name.errors %}
+              <div class="cert-error">{{ form.name.errors.0 }}</div>
             {% endif %}
-        </div>
-      
-        {# ---------- کارت اطلاعات تکمیلی ---------- #}
-        <div class="check-card" style="background: var(--surface);">
-          <div class="card-title"><span class="icon">📌</span> نکات مهم</div>
-          <ul style="color: var(--text-muted); font-size: 0.92rem; line-height: 2; padding-right: 20px; margin: 0;">
-            <li>✅ اطلاعات وارد شده در مدرک نهایی درج می‌شود</li>
-            <li>✅ نام باید دقیقاً مطابق با شناسنامه باشد</li>
-            <li>✅ کد ملی باید ۱۰ رقم صحیح باشد</li>
-            <li>✅ در صورت مغایرت، مدرک معتبر نخواهد بود</li>
-            <li>✅ پس از ثبت، نمی‌توانید اطلاعات را ویرایش کنید</li>
-          </ul>
-        </div>
-
-        {# ---------- کارت وضعیت ---------- #}
-        <div class="check-card" style="background: var(--surface);">
-          <div class="card-title"><span class="icon">📊</span> وضعیت ثبت‌نام</div>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm);">
-              <span style="color: var(--text-muted);">وضعیت</span>
-              <span style="color: #4caf50; font-weight: 700;">✓ تکمیل شده</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-alt); border-radius: var(--radius-sm);">
-              <span style="color: var(--text-muted);">مدرک</span>
-              <span style="color: var(--gold); font-weight: 700;">واجد شرایط</span>
-            </div>
           </div>
-        </div>
-      </div>
+
+          <div class="cert-field">
+            <label for="{{ form.national_code.id_for_label }}">
+              {{ form.national_code.label }}
+            </label>
+            {{ form.national_code }}
+            {% if form.national_code.errors %}
+              <div class="cert-error">{{ form.national_code.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          {# بخش پرداخت — فقط اگه پولی و هنوز ثبت‌نام نکرده #}
+          {% if needs_payment %}
+            <div class="cert-payment">
+              <div class="cert-payment-head">
+                <span>💳 هزینه‌ی صدور مدرک</span>
+                <strong>{{ fee|floatformat:0 }} تومان</strong>
+              </div>
+              <p class="cert-payment-hint">
+                مبلغ را به حساب اعلام‌شده واریز کنید و کد پیگیری را اینجا وارد نمایید.
+              </p>
+              <div class="cert-field">
+                <label for="tracking_code">کد پیگیری پرداخت</label>
+                <input type="text" name="tracking_code" id="tracking_code"
+                       placeholder="مثلاً 123456789"
+                       dir="ltr" autocomplete="off">
+              </div>
+            </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-primary btn-large cert-submit">
+            {% if needs_payment %}
+              ارسال درخواست پرداخت
+            {% else %}
+              🎓 صدور مدرک
+            {% endif %}
+          </button>
+        </form>
+
+        <p class="cert-note">
+          ⚠️ بعد از ثبت، امکان ویرایش اطلاعات وجود ندارد.
+        </p>
+      {% endif %}
 
     </div>
-
   </div>
 </section>
 
-{# ---------- استایل‌های اضافی برای فرم ---------- #}
 <style>
-  .form-group input {
-    width: 100%;
-    padding: 12px 16px;
-    background: var(--bg-alt);
-    border: 2px solid var(--border-soft);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    direction: rtl;
+  .cert-section {
+    padding: 40px 16px 64px;
   }
-  
-  .form-group input:focus {
+  .cert-container {
+    max-width: 640px;
+    margin-inline: auto;
+  }
+
+  .cert-breadcrumb {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .cert-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .cert-breadcrumb a:hover { color: var(--coral); }
+  .cert-breadcrumb span { margin: 0 8px; }
+  .cert-current { color: var(--text); font-weight: 700; }
+
+  .cert-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 24px;
+    padding: 40px 32px 32px;
+    text-align: center;
+    box-shadow: 0 20px 60px -25px rgba(0,0,0,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .cert-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #f0db1e, var(--coral));
+    background-size: 200% 100%;
+    animation: certShimmer 3s ease-in-out infinite;
+  }
+  @keyframes certShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+
+  .cert-icon {
+    font-size: 3.2rem;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .cert-icon-success { filter: drop-shadow(0 6px 16px rgba(16,185,129,.4)); }
+  .cert-icon-pending { animation: certPulse 2s ease-in-out infinite; }
+  .cert-icon-lock    { opacity: .55; }
+  @keyframes certPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.08); }
+  }
+
+  .cert-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+  .cert-lead {
+    color: var(--text-muted);
+    font-size: .95rem;
+    line-height: 1.8;
+    margin: 0 0 24px;
+    max-width: 460px;
+    margin-inline: auto;
+  }
+
+  .cert-preview {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid var(--border-soft);
+    margin-bottom: 24px;
+    box-shadow: 0 12px 32px -12px rgba(0,0,0,.2);
+  }
+  .cert-preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .cert-info-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+    text-align: right;
+  }
+  .cert-info-box p {
+    margin: 0;
+    font-size: .9rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+  .cert-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: .92rem;
+    padding: 4px 0;
+  }
+  .cert-info-row strong { color: var(--coral); }
+
+  .cert-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ─── فرم ─── */
+  .cert-form {
+    text-align: right;
+  }
+  .cert-field {
+    margin-bottom: 18px;
+  }
+  .cert-field label {
+    display: block;
+    font-size: .9rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .cert-field input {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border-soft);
+    border-radius: 12px;
+    font-size: 1rem;
+    color: var(--text);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .cert-field input:focus {
     outline: none;
     border-color: var(--coral);
-    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+    box-shadow: 0 0 0 4px rgba(255,127,80,.12);
   }
-  
-  .form-group input::placeholder {
-    color: var(--text-faint);
+  .cert-error {
+    color: #dc3545;
+    font-size: .82rem;
+    margin-top: 6px;
   }
-  
-  .form-group input:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+
+  .cert-payment {
+    margin-top: 28px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255,127,80,.06), rgba(240,219,30,.04));
+    border: 1px solid rgba(255,127,80,.25);
+    border-radius: 14px;
   }
-  
-  .alert-success {
-    background: #e8f5e9 !important;
-    border-right: 4px solid #4caf50 !important;
-    color: #2e7d32 !important;
+  .cert-payment-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: .95rem;
+    font-weight: 700;
   }
-  
-  .alert-error {
-    background: #ffebee !important;
-    border-right: 4px solid #f44336 !important;
-    color: #c62828 !important;
+  .cert-payment-head strong {
+    color: var(--coral);
+    font-size: 1.1rem;
   }
-  
-  @media (max-width: 768px) {
-    .check-panel-grid {
-      grid-template-columns: 1fr !important;
-    }
-    
-    .check-sidebar {
-      order: -1;
-    }
+  .cert-payment-hint {
+    font-size: .85rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin: 0 0 16px;
+  }
+
+  .cert-submit {
+    width: 100%;
+    margin-top: 8px;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .cert-note {
+    margin: 20px 0 0;
+    font-size: .82rem;
+    color: var(--text-muted);
+    line-height: 1.7;
   }
 </style>
 {% endblock %}

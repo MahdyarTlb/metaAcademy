@@ -1,5 +1,5 @@
 from django import forms
-from .models import Student, PaymentRequest
+from .models import Student, PaymentRequest, Session
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 
@@ -18,6 +18,8 @@ class StudentForm(forms.ModelForm):
             'placeholder': 'رمز عبور را دوباره وارد کنید',
         }),
     )
+    
+    bootcamp_slug = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = Student
@@ -159,7 +161,19 @@ class CertificateForm(forms.Form):
             raise ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد')
         
         return national_code
-    
+
+class SessionForm(forms.ModelForm):
+    class Meta:
+        model = Session
+        fields = [
+            'number', 'title', 'description', 'session_type',
+            'date', 'video_url', 'chat_url', 'location', 'is_live',
+        ]
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+        
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = PaymentRequest

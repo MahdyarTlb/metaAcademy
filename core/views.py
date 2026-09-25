@@ -1,23 +1,24 @@
-from django.views.generic import TemplateView, CreateView, ListView, View
+from django.views.generic import TemplateView, CreateView, ListView, DetailView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.core.validators import ValidationError
-from django.urls import reverse_lazy
-from django.shortcuts import redirect, render
-from .models import Student, VideoLink, Signature
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import redirect, render, get_object_or_404
+from .models import Student, VideoLink, Signature, Bootcamp, Enrollment, Session, PaymentRequest, enroll_student
 from .utils import preview_signature_on_template, generate_certificate_for_student
 from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm, PaymentForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, request
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
 from django.db import IntegrityError
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
+from urllib.parse import urlencode
 
 def csrf_failure(request, reason=""):
     print("\n========== CSRF FAILURE ==========")
@@ -38,7 +39,9 @@ class HomeView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
+        context['bootcamps'] = Bootcamp.objects.filter(is_active=True)[:6]
+
         student_id = self.request.session.get('auth_student_id')
         if student_id:
             try:
@@ -56,55 +59,104 @@ class HomeView(TemplateView):
             
         return context
  
+class BootcampListView(ListView):
+    model = Bootcamp
+    template_name = 'bootcamp_list.html'
+    context_object_name = 'bootcamps'
+
+    def get_queryset(self):
+        return Bootcamp.objects.filter(is_active=True)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'دوره‌ها'
+        return context
+
+
+class BootcampDetailView(DetailView):
+    model = Bootcamp
+    template_name = 'bootcamp_detail.html'
+    context_object_name = 'bootcamp'
+    slug_field = 'slug'
+    slug_url_kwarg = 'slug'
+
+    def get_queryset(self):
+        return Bootcamp.objects.filter(is_active=True)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        student_id = self.request.session.get('auth_student_id')
+        context['is_enrolled'] = bool(
+            student_id and Enrollment.objects.filter(
+                student_id=student_id, bootcamp=self.object
+            ).exists()
+        )
+        context['sessions'] = self.object.sessions.all()
+        return context
+
 class RegisterView(CreateView):
     model = Student
     form_class = StudentForm
     template_name = 'register.html'
-    success_url = reverse_lazy('core:success')
-    
+
+    def get_initial(self):
+        initial = super().get_initial()
+        next_url = self.request.GET.get('next') or self.request.session.get('next_url', '')
+        if next_url:
+            initial['next'] = next_url
+        if phone := self.request.GET.get('phone'):
+            initial['phone_number'] = phone
+        if email := self.request.GET.get('email'):
+            initial['email'] = email
+            
+        return initial
+
     def form_valid(self, form):
         response = super().form_valid(form)
- 
-        # اطلاعات لازم برای صفحه‌ی «ثبت‌نام موفق»
-        self.request.session['student_name'] = form.instance.name
-        self.request.session['student_age'] = form.instance.age
-        self.request.session['student_phone'] = form.instance.phone_number
-        self.request.session['student_email'] = form.instance.email or ''
-        self.request.session['student_reshte'] = form.instance.reshte
-        self.request.session['student_school'] = form.instance.school
-        self.request.session['student_city'] = form.instance.city
-        self.request.session['student_moaref'] = form.instance.moaref or ''
- 
-        # چون دانشجو همین الان رمز عبور تعیین کرده، مستقیماً واردش می‌کنیم
-        self.request.session['auth_student_id'] = form.instance.pk
- 
-        messages.success(self.request, f'✅ دانشجو  {form.instance.name} با موفقیت ثبت شد!')
+        student = form.instance
+
+        # ذخیره‌ی سشن برای احراز هویت
+        self.request.session['auth_student_id'] = student.pk
+        self.request.session['student_name'] = student.name
+        self.request.session['student_age'] = student.age
+        self.request.session['student_phone'] = student.phone_number
+        self.request.session['student_email'] = student.email or ''
+        self.request.session['student_reshte'] = student.reshte
+        self.request.session['student_school'] = student.school
+        self.request.session['student_city'] = student.city
+        self.request.session['student_moaref'] = student.moaref or ''
+
+        messages.success(self.request, f'✅ خوش آمدی {student.name}!')
+
         return response
-    
+
     def form_invalid(self, form):
-        if hasattr(form, 'existing_student') and form.existing_student:
-            existing_student = form.existing_student
-            # کاربر را به پنل کاربری هدایت کن
-            self.request.session['auth_student_id'] = existing_student.pk
-            self.request.session['student_name'] = existing_student.name
-            self.request.session['student_age'] = existing_student.age
-            self.request.session['student_phone'] = existing_student.phone_number
-            self.request.session['student_email'] = existing_student.email or ''
-            self.request.session['student_reshte'] = existing_student.reshte
-            self.request.session['student_school'] = existing_student.school
-            self.request.session['student_city'] = existing_student.city
-            self.request.session['student_moaref'] = existing_student.moaref or ''
-            
-            messages.warning(self.request, f'⚠️ این شماره موبایل قبلاً برای دانشجو {existing_student.name} ثبت شده است. شما به پنل کاربری هدایت شدید.')
-            return redirect('core:check_view')
-        
+        existing = getattr(form, 'existing_student', None)
+        if existing:
+            # کاربر قبلاً ثبت‌نام کرده → بفرست به لاگین، نه پنل
+            self.request.session['auth_student_id'] = existing.pk
+            # ... بقیه سشن ...
+            messages.warning(self.request, f'⚠️ شما قبلاً ثبت‌نام کرده‌اید. به پنل هدایت می‌شوید.')
+
+            next_url = self.request.POST.get('next')
+            if next_url:
+                self.request.session['next_url'] = next_url
+
+            return redirect('core:dashboard')
+
         messages.error(self.request, 'خطا در ثبت‌نام! لطفاً اطلاعات را بررسی کنید.')
         return super().form_invalid(form)
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'ثبت‌نام دانش‌آموز'
+        context['title'] = 'ثبت‌نام'
+        context['next'] = self.request.GET.get('next', '')
         return context
+    
+    def get_success_url(self):
+        next_url = self.request.POST.get('next') or self.request.session.get('next_url')
+        self.request.session.pop('next_url', None)
+        return next_url or reverse('core:success')
  
  
 class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -135,60 +187,113 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 # پنل کاربری با ورود واقعی (شماره/ایمیل + رمز عبور)
 # ==========================================================================
 class CheckView(View):
-    """
-    مرحله‌ی اول ورود: گرفتن شماره موبایل یا ایمیل.
-    - اگر کاربر از قبل لاگین کرده باشد (auth_student_id در سشن)، مستقیم پنل نشان داده می‌شود.
-    - اگر شماره/ایمیل معتبر باشد ولی کاربر هنوز رمز عبور نداشته باشد (کاربران قدیمی)،
-      به صفحه‌ی «تعیین رمز عبور» هدایت می‌شود.
-    - اگر رمز عبور داشته باشد، به صفحه‌ی «ورود با رمز عبور» هدایت می‌شود.
-    """
     template_name = 'check.html'
-    
+
     def get(self, request):
-        # امکان خروج از مرحله‌ی رمز عبور و بازگشت به فرم اولیه با ?reset=1
+        # ← جدید: ذخیره‌ی next توی سشن تا بعد از لاگین گم نشه
+        next_url = request.GET.get('next')
+        if next_url:
+            request.session['next_url'] = next_url
+
         if request.GET.get('reset'):
             request.session.pop('pending_student_id', None)
- 
+
         student_id = request.session.get('auth_student_id')
         if student_id:
             student = Student.objects.filter(pk=student_id).first()
             if student:
+                # ← جدید: اگه لاگین بود و next داشتیم، برو همونجا
+                next_url = request.session.pop('next_url', None)
+                if next_url:
+                    return redirect(next_url)
                 return render(request, self.template_name, {
-                    'found': True,
-                    'student': student,
-                    'logged_in': True,
+                    'found': True, 'student': student, 'logged_in': True,
                 })
             request.session.pop('auth_student_id', None)
- 
+
         form = CheckForm()
-        return render(request, self.template_name, {'form': form})
-    
+        return render(request, self.template_name, {
+            'form': form,
+            'next': next_url or '',
+        })
+
     def post(self, request):
+        # ← جدید: نگه‌داشتن next از فرم
+        next_url = request.POST.get('next') or request.session.get('next_url', '')
+        if next_url:
+            request.session['next_url'] = next_url
+
         form = CheckForm(request.POST)
-        context = {'form': form}
- 
+        context = {'form': form, 'next': next_url}
+
         if form.is_valid():
             identifier = form.cleaned_data['identifier'].strip()
- 
+            is_phone = identifier.isdigit() and len(identifier) == 11
+            
             try:
-                if identifier.isdigit() and len(identifier) == 11:
+                if is_phone:
                     student = Student.objects.get(phone_number=identifier)
                 else:
                     student = Student.objects.get(email=identifier)
- 
-                # شناسه‌ی دانشجو را موقتاً در سشن نگه می‌داریم تا مرحله‌ی رمز عبور طی شود
+
                 request.session['pending_student_id'] = student.pk
- 
+
                 if student.password:
                     return redirect('core:login_password')
                 return redirect('core:set_password')
- 
+
             except Student.DoesNotExist:
-                context['found'] = False
-                context['error'] = 'ایمیل یا شماره تماس پیدا نشد، با پشتیبانی ارتباط برقرار کنید'
- 
+                # ← جدید: کاربر جدید → بفرست به ثبت‌نام با پیش‌پر کردن فیلد
+                messages.info(request, 'به پارس ایکس خوش آمدید! لطفاً تکمیل ثبت‌نام کنید.')
+
+                params = {}
+                if is_phone:
+                    params['phone'] = identifier
+                else:
+                    params['email'] = identifier
+                if next_url:
+                    params['next'] = next_url
+
+                return redirect(f"{reverse('core:register')}?{urlencode(params)}")
+
         return render(request, self.template_name, context)
 
+class EnrollView(View):
+    """ثبت‌نام کاربر لاگین‌کرده در یک دوره."""
+
+    def get(self, request, slug):
+        bootcamp = get_object_or_404(Bootcamp, slug=slug, is_active=True)
+
+        student_id = request.session.get('auth_student_id')
+        if not student_id:
+            return redirect(
+                f"{reverse('core:check_view')}?next={request.get_full_path()}"
+            )
+
+        student = get_object_or_404(Student, pk=student_id)
+        with_cert = request.GET.get('cert') == '1'
+
+        try:
+            enroll_student(student, bootcamp, with_certificate=with_cert)
+            request.session['enrolled_bootcamp'] = bootcamp.slug
+            request.session['enrolled_student_id'] = student.pk
+        except ValidationError as e:
+            messages.warning(request, e.message)
+            return redirect(bootcamp.get_absolute_url())
+
+        if with_cert and bootcamp.certificate_fee > 0:
+            messages.info(
+                request,
+                'ثبت‌نام شما انجام شد. برای فعال‌سازی مدرک، اطلاعات پرداخت را وارد کنید.'
+            )
+            return redirect('core:certificate', slug=slug)
+
+        messages.success(
+            request,
+            f'ثبت‌نام شما در «{bootcamp.title}» با موفقیت انجام شد.'
+        )
+        return redirect('core:bootcamp_panel', slug=slug)
+    
 class PendingStudentMixin:
     """کمک‌کننده برای صفحات تعیین/ورود رمز عبور که به pending_student_id نیاز دارند."""
  
@@ -228,7 +333,8 @@ class SetPasswordView(PendingStudentMixin, View):
             request.session['auth_student_id'] = student.pk
  
             messages.success(request, '✅ رمز عبور شما با موفقیت تنظیم شد و وارد پنل شدید.')
-            return redirect('core:check_view')
+            next_url = request.session.pop('next_url', None)
+            return redirect(next_url or 'core:check_view')
  
         return render(request, self.template_name, {'form': form, 'mode': 'set', 'student': student})
     
@@ -259,7 +365,8 @@ class LoginPasswordView(PendingStudentMixin, View):
             if check_password(entered_password, student.password):
                 request.session.pop('pending_student_id', None)
                 request.session['auth_student_id'] = student.pk
-                return redirect('core:check_view')
+                next_url = request.session.pop('next_url', None)
+                return redirect(next_url or 'core:check_view')
             form.add_error('password', 'رمز عبور اشتباه است.')
  
         return render(request, self.template_name, {'form': form, 'mode': 'login', 'student': student})
@@ -271,20 +378,48 @@ class LogoutView(View):
         messages.info(request, 'از حساب کاربری خارج شدید.')
         return redirect('core:check_view')
  
+
 class SuccessView(TemplateView):
     template_name = 'success.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['name'] = self.request.session.get('student_name', '')
-        context['age'] = self.request.session.get('student_age', '')
-        context['phone'] = self.request.session.get('student_phone', '')
-        context['reshte'] = self.request.session.get('student_reshte', '')
-        context['school'] = self.request.session.get('student_school', '')
-        context['city'] = self.request.session.get('student_city', '')
-        context['moaref'] = self.request.session.get('student_moaref', '')
-        return context
+        request = self.request
 
+        # ---- اطلاعات دانشجو از سشن ----
+        context['name'] = request.session.get('student_name', '')
+        context['age'] = request.session.get('student_age', '')
+        context['phone'] = request.session.get('student_phone', '')
+        context['reshte'] = request.session.get('student_reshte', '')
+        context['school'] = request.session.get('student_school', '')
+        context['city'] = request.session.get('student_city', '')
+        context['moaref'] = request.session.get('student_moaref', '')
+
+        # ---- دوره‌ای که همین حالا ثبت‌نام کرده ----
+        enrolled_slug = request.session.get('enrolled_bootcamp')
+        enrolled_bootcamp = None
+        if enrolled_slug:
+            enrolled_bootcamp = Bootcamp.objects.filter(slug=enrolled_slug).first()
+        context['enrolled_bootcamp'] = enrolled_bootcamp
+
+        # ---- لیست همه‌ی دوره‌های این دانشجو ----
+        student_id = request.session.get('auth_student_id')
+        all_bootcamps = []
+        if student_id:
+            all_bootcamps = list(
+                Bootcamp.objects.filter(
+                    enrollments__student_id=student_id,
+                    is_active=True,
+                ).distinct()
+            )
+        context['all_bootcamps'] = all_bootcamps
+        context['bootcamps_count'] = len(all_bootcamps)
+
+        # پاک‌کردن سشن دوره، تا رفرش صفحه دوباره نشونش نده
+        request.session.pop('enrolled_bootcamp', None)
+
+        return context
+    
 class StudentSessionRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
         if not request.session.get('auth_student_id'):
@@ -295,153 +430,219 @@ class StudentSessionRequiredMixin:
             return redirect('core:check_view')
         return super().dispatch(request, *args, **kwargs)
  
- 
-class ClassOfflineView(StudentSessionRequiredMixin, TemplateView):
-    template_name = 'class_offline.html'
- 
+class StudentSessionRequiredMixin:
+    """چک می‌کنه دانشجو لاگین کرده."""
+    def dispatch(self, request, *args, **kwargs):
+        student_id = request.session.get('auth_student_id')
+        if not student_id:
+            return redirect(f"{reverse('core:check_view')}?next={request.path}")
+        student = Student.objects.filter(pk=student_id).first()
+        if not student:
+            request.session.pop('auth_student_id', None)
+            return redirect('core:check_view')
+        request.student = student
+        return super().dispatch(request, *args, **kwargs)
+
+
+class EnrolledStudentRequiredMixin(StudentSessionRequiredMixin):
+    """چک می‌کنه دانشجو در دوره‌ی slug ثبت‌نام کرده."""
+    def dispatch(self, request, *args, **kwargs):
+        # ۱. چک لاگین
+        student_id = request.session.get('auth_student_id')
+        if not student_id:
+            return redirect(f"{reverse('core:check_view')}?next={request.path}")
+        student = Student.objects.filter(pk=student_id).first()
+        if not student:
+            request.session.pop('auth_student_id', None)
+            return redirect('core:check_view')
+        request.student = student
+
+        # ۲. چک ثبت‌نام در دوره
+        slug = kwargs.get('slug')
+        bootcamp = get_object_or_404(Bootcamp, slug=slug, is_active=True)
+        enrollment = Enrollment.objects.filter(student=student, bootcamp=bootcamp).first()
+        if not enrollment:
+            messages.warning(request, 'ابتدا در این دوره ثبت‌نام کنید.')
+            return redirect(bootcamp.get_absolute_url())
+        request.bootcamp = bootcamp
+        request.enrollment = enrollment
+
+        return super(StudentSessionRequiredMixin, self).dispatch(request, *args, **kwargs)
+
+class StudentDashboardView(StudentSessionRequiredMixin, TemplateView):
+    template_name = 'student_dashboard.html'
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'جلسه پیش‌نیاز'
-        return context
- 
- 
-class ClassOnlineView(StudentSessionRequiredMixin, TemplateView):
-    template_name = 'class_online.html'
- 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        session_number = kwargs.get('session_number')
-        DEFAULT_C_LINK = "https://www.aparat.com/metaAcademy/live"
-        
-        video_links = {v.session_id: {'video_url': v.video_url, 'chat_url': v.chat_url, 'is_live': v.is_live} for v in VideoLink.objects.all()}
-        
-        CLASS_SESSIONS = {
-            1: {
-                'title': 'جلسه ۱: شروع طوفانی',
-                'date': '۱۹ مرداد',
-                'desc': 'مقدمات برنامه‌نویسی، نصب پایتون، عملگرها، دریافت ورودی و مبانی پایتون',
-                'video_url': '',
-            },
-            2: {
-                'title': 'جلسه ۲: ساختمان‌های داده',
-                'date': '۲۶ مرداد',
-                'desc': 'لیست‌ها، دیکشنری‌ها، تاپل‌ها، متدهای پرکاربرد هرکدام',
-                'video_url': '',
-            },
-            3: {
-                'title': 'جلسه ۳: کنترل جریان برنامه',
-                'date': '۲ شهریور',
-                'desc': 'شرط و حلقه‌ها، پیمایش پرسرعت، حلقه‌های تودرتو، دستورات مربوط به شرط و حلقه، حل مسائل منطقی',
-                'video_url': '',
-            },
-            4: {
-                'title': 'جلسه ۴: توابع و شیءگرایی',
-                'date': '۹ شهریور',
-                'desc': 'تابع، ورودی و خروجی، ماژول‌ها، کلاس و آبجکت، شیءگرایی، ارث‌بری، چندریختی',
-                'video_url': '',
-            },
-            5: {
-                'title': 'جلسه ۵: پروژه‌های واقعی با پایتون',
-                'date': '۱۶ شهریور',
-                'desc': 'مدیریت و خواندن/نوشتن فایل، مدیریت خطاها، مفهوم استثناءها و مدیریت آنها، رمزنگاری، امنیت در پایتون، بازی‌سازی با پایگیم',
-                'video_url': '',
-            },
-        }
-        
-        for session_id in CLASS_SESSIONS:
-            if session_id in video_links:
-                CLASS_SESSIONS[session_id]['video_url'] = video_links[session_id]['video_url']
-                CLASS_SESSIONS[session_id]['chat_url'] = video_links[session_id]['chat_url'] or DEFAULT_C_LINK
-                CLASS_SESSIONS[session_id]['is_live'] = video_links[session_id]['is_live']
-                        
-        session_data = CLASS_SESSIONS.get(session_number)
- 
-        if not session_data:
-            raise Http404('جلسه‌ی مورد نظر پیدا نشد.')
- 
-        context['session_number'] = session_number
-        context['session_data'] = session_data
-        context['all_sessions'] = CLASS_SESSIONS
-        context['title'] = session_data['title']
+        student = self.request.student
+        enrollments = Enrollment.objects.filter(student=student).select_related('bootcamp')
+        context.update({
+            'student': student,
+            'enrollments': enrollments,
+            'enrollments_count': enrollments.count(),
+            'title': 'پنل کاربری',
+        })
         return context
 
-class CertificateView(View):
+class BootcampPanelView(EnrolledStudentRequiredMixin, TemplateView):
+    template_name = 'bootcamp_panel.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bootcamp = self.request.bootcamp
+        enrollment = self.request.enrollment
+        sessions = bootcamp.sessions.all()
+
+        total = sessions.count()
+        passed = enrollment.passed_sessions_count
+
+        context.update({
+            'bootcamp': bootcamp,
+            'enrollment': enrollment,
+            'sessions': sessions,
+            'total_sessions': total,
+            'progress_percent': int(passed / total * 100) if total else 0,
+            'title': bootcamp.title,
+        })
+        return context
+
+class SessionDetailView(EnrolledStudentRequiredMixin, TemplateView):
+    template_name = 'session_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bootcamp = self.request.bootcamp
+        number = self.kwargs.get('number')
+        session = get_object_or_404(Session, bootcamp=bootcamp, number=number)
+
+        context.update({
+            'session': session,
+            'bootcamp': bootcamp,
+            'total_sessions': bootcamp.sessions.count(),
+            'title': session.title,
+        })
+        return context
+
+class CertificateView(EnrolledStudentRequiredMixin, View):
     template_name = 'certificate.html'
-    
-    def get(self, request):
-        # بررسی احراز هویت کاربر
-        student_id = request.session.get('auth_student_id')
-        if not student_id:
-            messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
-            return redirect('core:check')
-        
-        try:
-            student = Student.objects.get(pk=student_id)
-        except Student.DoesNotExist:
-            request.session.pop('auth_student_id', None)
-            messages.error(request, 'کاربر یافت نشد')
-            return redirect('core:check')
-        
-        certificate_url = None
-        if student.certificate_file:
-            certificate_url = student.certificate_file.url
-            
-        # پر کردن فرم با اطلاعات فعلی دانشجو
-        initial_data = {
-            'name': student.name,
-            'national_code': student.national_code,
+
+    # ─────────── تعیین حالت ───────────
+    def _build_context(self, request, form=None):
+        enrollment = request.enrollment
+        student = request.student
+        bootcamp = request.bootcamp
+        payment = getattr(enrollment, 'payment_request', None)
+
+        base = {
+            'student': student,
+            'bootcamp': bootcamp,
+            'enrollment': enrollment,
+            'fee': bootcamp.certificate_fee,
         }
-        form = CertificateForm(initial=initial_data)
-        
-        return render(request, self.template_name, {
+
+        # حالت ۱: مدرک آماده‌ی دانلود
+        if enrollment.is_certified and enrollment.certificate_file:
+            base.update({
+                'mode': 'download',
+                'certificate_url': enrollment.certificate_file.url,
+            })
+            return base
+
+        # حالت ۲: درخواست پرداخت ثبت شده، در انتظار تأیید ادمین
+        if enrollment.with_certificate and bootcamp.certificate_fee > 0 and payment:
+            base.update({
+                'mode': 'pending',
+                'payment': payment,
+            })
+            return base
+
+        # حالت ۳: هنوز دوره تموم نشده
+        if not enrollment.is_completed:
+            base.update({'mode': 'not_ready'})
+            return base
+
+        # حالت ۴: فرم تکمیل اطلاعات (+ پرداخت اگه لازمه)
+        if form is None:
+            form = CertificateForm(initial={
+                'name': student.name,
+                'national_code': student.national_code or '',
+            })
+        base.update({
+            'mode': 'form',
             'form': form,
-            'student': student,
-            'certificate_url': certificate_url,
+            'needs_payment': (
+                not enrollment.with_certificate and bootcamp.certificate_fee > 0
+            ),
         })
-    
-    def post(self, request):
-        # بررسی احراز هویت
-        student_id = request.session.get('auth_student_id')
-        if not student_id:
-            messages.error(request, 'لطفاً ابتدا وارد سیستم شوید')
-            return redirect('core:check')
-        
-        try:
-            student = Student.objects.get(pk=student_id)
-        except Student.DoesNotExist:
-            request.session.pop('auth_student_id', None)
-            messages.error(request, 'کاربر یافت نشد')
-            return redirect('core:check')
-        
-        if student.certificate_file and student.is_certified:
-            messages.error(request, '❌ مدرک شما قبلاً ساخته شده است و قابل ویرایش نیست.')
-            return redirect('core:certificate')
-        
+        return base
+
+    # ─────────── GET ───────────
+    def get(self, request, slug):
+        return render(request, self.template_name,
+                      self._build_context(request))
+
+    # ─────────── POST ───────────
+    def post(self, request, slug):
+        enrollment = request.enrollment
+        student = request.student
+        bootcamp = request.bootcamp
+
+        if enrollment.is_certified and enrollment.certificate_file:
+            messages.error(request, '❌ مدرک این دوره قبلاً صادر شده است.')
+            return redirect('core:certificate', slug=slug)
+
         form = CertificateForm(request.POST)
+
+        if not form.is_valid():
+            return render(request, self.template_name,
+                          self._build_context(request, form=form))
+
+        # ذخیره‌ی نام و کد ملی روی پروفایل دانشجو
+        student.name = form.cleaned_data['name']
+        student.national_code = form.cleaned_data['national_code']
+        student.save(update_fields=['name', 'national_code'])
+
+        # شاخه‌ی الف: کاربر بدون مدرک ثبت‌نام کرده ولی الان می‌خواد مدرک پولی
+        if not enrollment.with_certificate and bootcamp.certificate_fee > 0:
+            tracking = request.POST.get('tracking_code', '').strip()
+            if not tracking:
+                messages.error(request, 'لطفاً کد پیگیری پرداخت را وارد کنید.')
+                return render(request, self.template_name,
+                              self._build_context(request, form=form))
+
+            PaymentRequest.objects.update_or_create(
+                enrollment=enrollment,
+                defaults={'tracking_code': tracking},
+            )
+            enrollment.with_certificate = True
+            enrollment.save(update_fields=['with_certificate'])
+            messages.success(
+                request,
+                '✅ اطلاعات ذخیره شد. پس از تأیید پرداخت، مدرک شما صادر می‌شود.'
+            )
+            return redirect('core:certificate', slug=slug)
+
+        # شاخه‌ی ب: مدرک رایگان یا از قبل با مدرک ثبت‌نام کرده → صدور فوری
+        if not enrollment.is_completed:
+            messages.error(request, 'هنوز واجد شرایط دریافت مدرک نیستید.')
+            return redirect('core:certificate', slug=slug)
+
+        try:
+            cert_content = generate_certificate_for_student(enrollment)
+            enrollment.certificate_file.save(
+                cert_content.name, cert_content, save=False
+            )
+            enrollment.is_certified = True
+            enrollment.certificate_issued_at = timezone.now()
+            enrollment.save(update_fields=[
+                'certificate_file', 'is_certified', 'certificate_issued_at'
+            ])
+            messages.success(request, '✅ مدرک شما با موفقیت صادر شد.')
+        except Exception as e:
+            messages.error(request, f'خطا در ساخت مدرک: {e}')
+
+        return redirect('core:certificate', slug=slug)
         
-        if form.is_valid():
-            # ذخیره اطلاعات در دیتابیس
-            student.name = form.cleaned_data['name']
-            student.national_code = form.cleaned_data['national_code']
-            student.save()
-            
-            if student.is_certified:
-                try:
-                    cert_content = generate_certificate_for_student(student)
-                    student.certificate_file.save(cert_content.name, cert_content, save=True)
-                    messages.success(request, '✅ مدرک شما آماده شد.')
-                except Exception as e:
-                    messages.error(request, f'خطا در ساخت مدرک: هنوز واجد شرایط دریافت گواهی نیستید!.')
-            else:
-                return redirect('core:payment')
-
-            return redirect('core:certificate')
-
-        # در صورت نامعتبر بودن فرم
-        return render(request, self.template_name, {
-            'form': form,
-            'student': student,
-        })
 @login_required(login_url="/admins/admin")
 def admin_dashboard(request):
     # ========== آمار ==========

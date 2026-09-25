@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ bootcamp.title }} | متا آکادمی{% endblock %}
+
+{% block content %}
+<section class="bp-section">
+  <div class="container">
+
+    {# بردکرامب #}
+    <nav class="bp-breadcrumb">
+      <a href="{% url 'core:dashboard' %}">پنل کاربری</a>
+      <span class="bp-sep">/</span>
+      <span class="bp-current">{{ bootcamp.title }}</span>
+    </nav>
+
+    {# هدر دوره #}
+    <header class="bp-header">
+      <div class="bp-header-main">
+        <h1 class="bp-title">{{ bootcamp.title }}</h1>
+        {% if bootcamp.subtitle %}
+          <p class="bp-subtitle">{{ bootcamp.subtitle }}</p>
+        {% endif %}
+        {% if bootcamp.teacher %}
+          <p class="bp-teacher">👨‍🏫 مدرس: <strong>{{ bootcamp.teacher }}</strong></p>
+        {% endif %}
+      </div>
+
+      {# پیشرفت کلی #}
+      <div class="bp-progress-box">
+        <div class="bp-progress-ring" style="--progress: {% widthratio enrollment.passed_sessions_count total_sessions 100 %}">
+          <span>{% widthratio enrollment.passed_sessions_count total_sessions 100 %}%</span>
+        </div>
+        <div class="bp-progress-text">
+          <strong>{{ enrollment.passed_sessions_count }}/{{ total_sessions }}</strong>
+          <span>جلسه برگزار شده</span>
+        </div>
+      </div>
+    </header>
+
+    {# لیست جلسات #}
+    <section class="bp-sessions">
+      <h2 class="bp-section-title">📅 جلسات دوره</h2>
+
+      {% if sessions %}
+        <div class="bp-session-list">
+          {% for session in sessions %}
+            <a href="{% url 'core:session_detail' slug=bootcamp.slug number=session.number %}"
+               class="bp-session-card bp-session-{{ session.status }}">
+
+              <div class="bp-session-num">
+                {{ session.number|stringformat:"02d" }}
+              </div>
+
+              <div class="bp-session-body">
+                <div class="bp-session-head">
+                  <h3 class="bp-session-title">{{ session.title }}</h3>
+                  <span class="bp-session-badge bp-badge-{{ session.status }}">
+                    {% if session.status == 'passed' %}
+                      ✓ برگزار شد
+                    {% elif session.status == 'today' %}
+                      ⏰ امروز
+                    {% else %}
+                      ⏳ {{ session.date }}
+                    {% endif %}
+                  </span>
+                </div>
+
+                {% if session.description %}
+                  <p class="bp-session-desc">{{ session.description|truncatechars:120 }}</p>
+                {% endif %}
+
+                <div class="bp-session-meta">
+                  <span class="bp-mode bp-mode-{{ session.session_type }}">
+                    {% if session.session_type == 'online' %}🌐 آنلاین
+                    {% elif session.session_type == 'offline' %}📼 آفلاین
+                    {% else %}🏛 حضوری{% endif %}
+                  </span>
+                  <span class="bp-date">📆 {{ session.date }}</span>
+                </div>
+              </div>
+
+              <span class="bp-session-arrow">←</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="bp-empty">
+          جلسه‌ای برای این دوره ثبت نشده.
+        </div>
+      {% endif %}
+    </section>
+
+    {# کانال‌ها + مدرک #}
+    <div class="bp-bottom-grid">
+      <div class="bp-card">
+        <h3 class="bp-card-title">📢 کانال‌های اطلاع‌رسانی</h3>
+        <div class="bp-channels">
+          <a href="https://t.me/metanix_ir" target="_blank" class="bp-channel">
+            <span class="bp-ch-badge telegram">تلگرام</span>
+            <span>@metanix_ir</span>
+          </a>
+          <a href="https://ble.ir/metanix_ir" target="_blank" class="bp-channel">
+            <span class="bp-ch-badge bale">بله</span>
+            <span>@metanix_ir</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="bp-card">
+        <h3 class="bp-card-title">🎓 مدرک دوره</h3>
+        {% if enrollment.is_certified %}
+          {# حالت ۱: مدرک صادر شده #}
+          <a href="{{ enrollment.certificate_file.url }}" target="_blank"
+            class="btn btn-primary">
+            📜 دریافت مدرک
+          </a>
+
+        {% elif enrollment.with_certificate and enrollment.is_completed %}
+          {# حالت ۲: با مدرک ثبت‌نام کرده + همه‌ی جلسات تموم شده #}
+          <a href="{% url 'core:certificate' slug=bootcamp.slug %}"
+            class="btn btn-primary">
+            🎓 صدور مدرک
+          </a>
+
+        {% elif enrollment.with_certificate and not enrollment.is_completed %}
+          {# حالت ۲b: با مدرک ثبت‌نام کرده ولی هنوز دوره تموم نشده #}
+          <button class="btn btn-ghost" disabled>
+            🔒 بعد از اتمام دوره فعال می‌شه
+          </button>
+
+        {% elif not enrollment.with_certificate and bootcamp.certificate_fee > 0 %}
+          {# حالت ۳: بدون مدرک ثبت‌نام کرده، الان می‌خواد مدرک #}
+          <a href="{% url 'core:certificate_payment' slug=bootcamp.slug %}"
+            class="btn btn-primary">
+            🎓 فعال‌سازی مدرک
+            <small>{{ bootcamp.certificate_fee|floatformat:0 }} تومان</small>
+          </a>
+
+        {% else %}
+          {# بدون مدرک، هزینه‌ی مدرک هم صفر → فقط صبر کنه #}
+          <button class="btn btn-ghost" disabled>
+            🔒 بعد از اتمام دوره فعال می‌شه
+          </button>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<style>
+  .bp-section { padding: 32px 0 64px; }
+
+  .bp-breadcrumb {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .bp-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .bp-breadcrumb a:hover { color: var(--coral); }
+  .bp-sep { margin: 0 8px; opacity: .5; }
+  .bp-current { color: var(--text); font-weight: 700; }
+
+  .bp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, rgba(255,127,80,0.06), rgba(240,219,30,0.03));
+    border: 1px solid rgba(255,127,80,0.18);
+    border-radius: 22px;
+    margin-bottom: 36px;
+  }
+  .bp-title {
+    font-size: 1.7rem;
+    font-weight: 800;
+    margin: 0 0 6px;
+  }
+  .bp-subtitle {
+    color: var(--text-muted);
+    margin: 0 0 8px;
+    font-size: .95rem;
+  }
+  .bp-teacher {
+    font-size: .88rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .bp-teacher strong { color: var(--text); }
+
+  .bp-progress-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .bp-progress-ring {
+    --size: 76px;
+    --progress: 0;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--coral) calc(var(--progress) * 1%),
+      rgba(0,0,0,0.08) 0
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .bp-progress-ring::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    background: var(--surface);
+  }
+  .bp-progress-ring span {
+    position: relative;
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .bp-progress-text {
+    display: flex;
+    flex-direction: column;
+  }
+  .bp-progress-text strong {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .bp-progress-text span {
+    font-size: .8rem;
+    color: var(--text-muted);
+  }
+
+  .bp-section-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin: 0 0 18px;
+  }
+
+  .bp-session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .bp-session-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: all .25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .bp-session-card::before {
+    content: "";
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--border-soft);
+    transition: background .25s ease;
+  }
+  .bp-session-card.bp-session-passed::before { background: #10b981; }
+  .bp-session-card.bp-session-today::before  { background: #f59e0b; }
+  .bp-session-card:hover {
+    transform: translateX(-4px);
+    border-color: rgba(255,127,80,0.3);
+    box-shadow: 0 10px 30px -15px rgba(0,0,0,0.15);
+  }
+  .bp-session-card:hover::before {
+    background: var(--coral);
+  }
+
+  .bp-session-num {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: rgba(255,127,80,0.55);
+    font-variant-numeric: tabular-nums;
+    min-width: 48px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .bp-session-body { flex: 1; min-width: 0; }
+
+  .bp-session-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .bp-session-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .bp-session-badge {
+    font-size: .72rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .bp-badge-passed { background: rgba(16,185,129,0.15); color: #047857; }
+  .bp-badge-today  { background: rgba(245,158,11,0.15); color: #b45309; }
+  .bp-badge-upcoming {
+    background: rgba(0,0,0,0.05);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .bp-session-desc {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+    line-height: 1.6;
+  }
+
+  .bp-session-meta {
+    display: flex;
+    gap: 14px;
+    font-size: .78rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .bp-mode {
+    font-weight: 700;
+  }
+  .bp-mode-online  { color: #1d4ed8; }
+  .bp-mode-offline { color: #7c3aed; }
+  .bp-mode-in_person { color: #059669; }
+
+  .bp-session-arrow {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    transition: transform .25s ease, color .25s ease;
+  }
+  .bp-session-card:hover .bp-session-arrow {
+    color: var(--coral);
+    transform: translateX(-6px);
+  }
+
+  .bp-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px dashed var(--border-soft);
+    border-radius: 14px;
+  }
+
+  .bp-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 32px;
+  }
+  @media (max-width: 720px) {
+    .bp-bottom-grid { grid-template-columns: 1fr; }
+  }
+
+  .bp-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    padding: 22px 24px;
+  }
+  .bp-card-title {
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0 0 16px;
+  }
+
+  .bp-channels {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .bp-channel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: .88rem;
+    font-weight: 600;
+    transition: border-color .2s ease;
+  }
+  .bp-channel:hover { border-color: var(--coral); }
+  .bp-ch-badge {
+    font-size: .65rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 999px;
+    color: #fff;
+  }
+  .bp-ch-badge.telegram { background: #1a7686; }
+  .bp-ch-badge.bale     { background: #00b894; }
+
+  .bp-cert-ready, .bp-cert-hint {
+    font-size: .9rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin: 0 0 16px;
+  }
+  .bp-cert-ready { color: #047857; font-weight: 700; }
+</style>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}پنل کاربری | متا آکادمی{% endblock %}
+
+{% block content %}
+<section class="dashboard-section">
+  <div class="container">
+
+    {# هدر #}
+    <div class="dash-header">
+      <div>
+        <p class="eyebrow"># پنل کاربری</p>
+        <h1 class="dash-title">
+          سلام {{ student.name }} <span class="wave">👋</span>
+        </h1>
+        <p class="dash-lead">
+          {% if enrollments_count %}
+            توی {{ enrollments_count }} دوره ثبت‌نام کردی. یکی رو انتخاب کن و ادامه بده.
+          {% else %}
+            هنوز توی هیچ دوره‌ای ثبت‌نام نکردی.
+          {% endif %}
+        </p>
+      </div>
+      <a href="{% url 'core:check_logout' %}" class="btn btn-ghost">🚪 خروج</a>
+    </div>
+
+    {# گرید دوره‌ها #}
+    {% if enrollments %}
+      <div class="dash-grid">
+        {% for enrollment in enrollments %}
+          {% with b=enrollment.bootcamp %}
+          <a href="{% url 'core:bootcamp_panel' slug=b.slug %}" class="dash-card">
+            <div class="dash-card-cover">
+              {% if b.cover_image %}
+                <img src="{{ b.cover_image.url }}" alt="{{ b.title }}">
+              {% else %}
+                <div class="dash-cover-empty">🐍</div>
+              {% endif %}
+              {% if enrollment.is_certified %}
+                <span class="dash-badge dash-badge-cert">🎓 مدرک صادر شد</span>
+              {% endif %}
+            </div>
+
+            <div class="dash-card-body">
+              <h3 class="dash-card-title">{{ b.title }}</h3>
+              {% if b.teacher %}
+                <p class="dash-card-teacher">👨‍🏫 {{ b.teacher }}</p>
+              {% endif %}
+
+              {# پیشرفت #}
+              {% with total=b.sessions.count %}
+                {% if total %}
+                  <div class="dash-progress">
+                    <div class="dash-progress-bar">
+                      <div class="dash-progress-fill"
+                           style="width: {% widthratio enrollment.passed_sessions_count total 100 %}%"></div>
+                    </div>
+                    <div class="dash-progress-meta">
+                      <span>{{ enrollment.passed_sessions_count }} از {{ total }} جلسه</span>
+                      <strong>{% widthratio enrollment.passed_sessions_count total 100 %}%</strong>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endwith %}
+
+              <div class="dash-card-cta">
+                ورود به دوره
+                <span class="arrow">←</span>
+              </div>
+            </div>
+          </a>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="dash-empty">
+        <div class="dash-empty-icon">📚</div>
+        <h3>هنوز دوره‌ای ثبت‌نام نکردی</h3>
+        <p>یه نگاهی به دوره‌های فعال بنداز.</p>
+        <a href="{% url 'core:bootcamp_list' %}" class="btn btn-primary">
+          مشاهده‌ی دوره‌ها
+        </a>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+
+<style>
+  .dashboard-section { padding: 48px 0 64px; }
+
+  .dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .dash-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 8px 0;
+    letter-spacing: -0.3px;
+  }
+  .wave {
+    display: inline-block;
+    animation: dashWave 2s ease-in-out infinite;
+    transform-origin: 70% 70%;
+  }
+  @keyframes dashWave {
+    0%, 60%, 100% { transform: rotate(0); }
+    10%, 30%      { transform: rotate(14deg); }
+    20%, 40%      { transform: rotate(-8deg); }
+  }
+  .dash-lead {
+    color: var(--text-muted);
+    font-size: .95rem;
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 22px;
+  }
+
+  .dash-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    isolation: isolate;
+  }
+  .dash-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px -15px rgba(0,0,0,0.15);
+    border-color: rgba(255,127,80,0.35);
+  }
+
+  .dash-card-cover {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, rgba(255,127,80,0.08), rgba(240,219,30,0.05));
+    overflow: hidden;
+  }
+  .dash-card-cover img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .6s ease;
+  }
+  .dash-card:hover .dash-card-cover img {
+    transform: scale(1.05);
+  }
+  .dash-cover-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%; height: 100%;
+    font-size: 3.5rem;
+    opacity: .5;
+  }
+
+  .dash-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+  }
+  .dash-badge-cert {
+    background: rgba(16,185,129,0.9);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.35);
+  }
+
+  .dash-card-body {
+    padding: 20px 22px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+  }
+  .dash-card-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .dash-card-teacher {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .dash-progress { margin-top: auto; }
+  .dash-progress-bar {
+    height: 8px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .dash-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #fb923c, var(--coral));
+    border-radius: 999px;
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+  }
+  .dash-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .8rem;
+    color: var(--text-muted);
+  }
+  .dash-progress-meta strong {
+    color: var(--coral);
+    font-weight: 800;
+  }
+
+  .dash-card-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border-soft);
+    font-weight: 700;
+    font-size: .88rem;
+    color: var(--coral);
+  }
+  .dash-card-cta .arrow {
+    transition: transform .3s ease;
+  }
+  .dash-card:hover .dash-card-cta .arrow {
+    transform: translateX(-6px);
+  }
+
+  .dash-empty {
+    text-align: center;
+    padding: 80px 20px;
+    background: var(--surface);
+    border: 1px dashed var(--border-soft);
+    border-radius: 20px;
+  }
+  .dash-empty-icon { font-size: 3.5rem; margin-bottom: 16px; }
+  .dash-empty h3 { margin: 0 0 8px; }
+  .dash-empty p { color: var(--text-muted); margin: 0 0 24px; }
+</style>
+{% endblock %}

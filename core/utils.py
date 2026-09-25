@@ -84,14 +84,15 @@ def draw_centered_text(draw, text, center_x, y, font, fill='black', direction=No
         )
 
 def generate_certificate_for_student(
-    student,
+    enrollment,
     base_template_path = os.path.join(settings.MEDIA_ROOT, 'preview', 'preview_signature.jpg')
 ):
     """
     ساخت مدرک دانشجو.
     نام و کد ملی با فونت، سایز و وزن متفاوت نوشته می‌شوند.
     """
-
+    student = enrollment.student
+    
     template = Image.open(
         base_template_path
     ).convert('RGBA')

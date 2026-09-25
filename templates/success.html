@@ -74,6 +74,20 @@
         ">
           {{ name|default:"دانش‌آموز گرامی" }}، ثبت‌نام شما در بوتکمپ تابستانه تکمیل شد.
         </p>
+        <p class="register-lead" style="
+          font-size: 0.95rem;
+          color: var(--text-muted);
+          max-width: 100%;
+          margin-bottom: 22px;
+          font-weight: 400;
+        ">
+          {{ name|default:"دانش‌آموز گرامی" }}،
+          {% if enrolled_bootcamp %}
+            ثبت‌نام شما در دوره‌ی <strong style="color: var(--coral);">{{ enrolled_bootcamp.title }}</strong> با موفقیت تکمیل شد.
+          {% else %}
+            ثبت‌نام شما با موفقیت تکمیل شد.
+          {% endif %}
+        </p>
 
         {# خلاصه مشخصات (با هایلایت رنگی) #}
         <div style="
@@ -137,6 +151,87 @@
             {% endif %}
           </div>
         </div>
+
+        {% if enrolled_bootcamp %}
+          <div style="
+            background: linear-gradient(135deg, rgba(255,127,80,0.08), rgba(240,219,30,0.06));
+            border: 1px solid rgba(255,127,80,0.25);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 24px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+          ">
+            {% if enrolled_bootcamp.cover_image %}
+              <img src="{{ enrolled_bootcamp.cover_image.url }}" alt="{{ enrolled_bootcamp.title }}"
+                  style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex-shrink: 0;">
+            {% else %}
+              <div style="width: 64px; height: 64px; border-radius: 12px; background: rgba(255,127,80,0.15); flex-shrink: 0; display:flex; align-items:center; justify-content:center; font-size:1.6rem;">🎓</div>
+            {% endif %}
+
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">دوره‌ی ثبت‌نام‌شده</div>
+              <div style="font-weight: 800; font-size: 1rem; color: var(--text); margin-bottom: 6px;">
+                {{ enrolled_bootcamp.title }}
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: .72rem;">
+                {% if enrolled_bootcamp.start_date %}
+                  <span style="background: rgba(59,130,246,0.12); color: #1d4ed8; padding: 2px 10px; border-radius: 999px; font-weight: 700;">
+                    شروع: {{ enrolled_bootcamp.start_date }}
+                  </span>
+                {% endif %}
+                {% if enrolled_bootcamp.duration_weeks %}
+                  <span style="background: rgba(0,0,0,0.05); color: var(--text-muted); padding: 2px 10px; border-radius: 999px;">
+                    {{ enrolled_bootcamp.duration_weeks }} هفته
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+
+            <a href="{{ enrolled_bootcamp.get_absolute_url }}"
+              style="color: var(--coral); font-weight: 700; font-size: .82rem; text-decoration: none; flex-shrink: 0;">
+              مشاهده ←
+            </a>
+          </div>
+        {% endif %}
+
+        {% if bootcamps_count > 1 %}
+          <div style="
+            background: var(--surface-2);
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            text-align: right;
+          ">
+            <div style="font-size: .78rem; color: var(--text-muted); margin-bottom: 10px;">
+              📚 شما در {{ bootcamps_count }} دوره ثبت‌نام کرده‌اید:
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              {% for b in all_bootcamps %}
+                <a href="{{ b.get_absolute_url }}" style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 8px 12px;
+                  border-radius: 10px;
+                  background: var(--surface);
+                  border: 1px solid var(--border-soft);
+                  color: var(--text);
+                  text-decoration: none;
+                  font-size: .85rem;
+                  font-weight: 600;
+                  transition: border-color .2s ease;
+                " onmouseover="this.style.borderColor='var(--coral)'" onmouseout="this.style.borderColor='var(--border-soft)'">
+                  <span>{{ b.title }}</span>
+                  <span style="color: var(--coral); font-weight: 700;">←</span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
 
         {# قدم‌های بعدی #}
         <div style="text-align: right; margin-bottom: 28px;">
@@ -298,7 +393,7 @@
           justify-content: center;
           padding-top: 4px;
         ">
-          <a href="{% url 'core:check_view' %}" class="btn btn-primary" style="
+          <a href="{% url 'core:dashboard' %}" class="btn btn-primary" style="
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -316,7 +411,7 @@
           " onmouseover="this.style.transform='scale(1.03)'; this.style.boxShadow='0 10px 24px rgba(255,107,53,0.45)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 6px 16px rgba(255,107,53,0.35)'">
             ← پروفایل کاربری
           </a>
-          <a href="{% url 'core:register' %}" class="btn btn-ghost" style="
+          <a href="{% url 'core:bootcamp_list' %}" class="btn btn-ghost" style="
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -331,7 +426,7 @@
             border: 1.5px solid var(--border-soft);
             cursor: pointer;
           " onmouseover="this.style.background='var(--surface-2)'; this.style.borderColor='var(--coral)'" onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border-soft)'">
-            ثبت‌نام فردی دیگر
+            ثبت‌نام دیگر دوره ها
           </a>
         </div>
 
