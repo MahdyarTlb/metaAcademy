@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}پرداخت هزینه مدرک | پارس ایکس{% endblock %}
+
+{% block content %}
+<section class="pay-section">
+  <div class="pay-container">
+
+    {# بردکرامب #}
+    <nav class="pay-breadcrumb">
+      <a href="{% url 'core:dashboard' %}">پنل کاربری</a>
+      <span>/</span>
+      <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}">{{ bootcamp.title }}</a>
+      <span>/</span>
+      <span class="pay-current">پرداخت مدرک</span>
+    </nav>
+
+    <div class="pay-card">
+
+      <div class="pay-header">
+        <div class="pay-header-icon">💳</div>
+        <h1 class="pay-title">پرداخت هزینه مدرک</h1>
+        <p class="pay-lead">
+          برای صدور مدرک دوره‌ی «<strong>{{ bootcamp.title }}</strong>»، مبلغ زیر را واریز کنید.
+        </p>
+      </div>
+
+      <div class="pay-amount">
+        <span class="pay-amount-label">مبلغ قابل پرداخت</span>
+        <strong class="pay-amount-value">{{ fee|floatformat:0 }}<small> تومان</small></strong>
+      </div>
+
+      <div class="pay-bank-card">
+        <div class="pay-bank-bg">💳</div>
+        <div class="pay-bank-head">
+          <span class="pay-bank-label">شماره کارت</span>
+          <button type="button" class="pay-copy-btn" id="copyBtn"
+                  onclick="copyCardNumber()">
+            📋 کپی
+          </button>
+        </div>
+        <div class="pay-bank-number" id="cardNumber">6219-8619-9587-9706</div>
+        <div class="pay-bank-holder">
+          <span>به نام</span>
+          <strong>مهدیار طالبی</strong>
+        </div>
+      </div>
+
+      <form method="post" class="pay-form">
+        {% csrf_token %}
+
+        <h2 class="pay-section-title">📝 اطلاعات چاپ روی مدرک</h2>
+        <p class="pay-section-hint">
+          این اطلاعات دقیقاً روی مدرک درج می‌شود. مطابق شناسنامه وارد کنید.
+        </p>
+
+        <div class="pay-field">
+          <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+          {{ form.name }}
+          {% if form.name.errors %}
+            <div class="pay-error">{{ form.name.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="pay-field">
+          <label for="{{ form.national_code.id_for_label }}">{{ form.national_code.label }}</label>
+          {{ form.national_code }}
+          {% if form.national_code.errors %}
+            <div class="pay-error">{{ form.national_code.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <h2 class="pay-section-title">🧾 اطلاعات پرداخت</h2>
+
+        <div class="pay-field">
+          <label for="tracking_code">کد پیگیری (رسید بانکی)</label>
+          <input type="text" name="tracking_code" id="tracking_code"
+                 class="pay-input-ltr"
+                 placeholder="مثلاً 123456789"
+                 dir="ltr" autocomplete="off" required>
+          <small class="pay-hint">شماره ارجاع بانک یا کد پیگیری‌ای که بعد از واریز از بانک دریافت می‌کنید.</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-large pay-submit">
+          ارسال درخواست تأیید
+        </button>
+      </form>
+
+      {# پیام پایین #}
+      <div class="pay-note">
+        <span class="pay-note-icon">⏳</span>
+        <p>
+          پس از ثبت، درخواست شما توسط تیم پشتیبانی بررسی می‌شود.
+          به‌محض تأیید، مدرک شما صادر و پس از پایان برگزاری دوره، از همین پنل قابل دریافت خواهد بود.
+        </p>
+      </div>
+
+      <div class="pay-back">
+        <a href="{% url 'core:bootcamp_panel' slug=bootcamp.slug %}">
+          ↩️ بازگشت به صفحه‌ی بوتکمپ
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+function copyCardNumber() {
+  const raw = document.getElementById('cardNumber').innerText.replace(/[\s-]/g, '');
+  const btn = document.getElementById('copyBtn');
+
+  const done = () => {
+    const old = btn.innerHTML;
+    btn.innerHTML = '✅ کپی شد';
+    btn.classList.add('is-copied');
+    setTimeout(() => {
+      btn.innerHTML = old;
+      btn.classList.remove('is-copied');
+    }, 1800);
+  };
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(raw).then(done).catch(fallback);
+  } else {
+    fallback();
+  }
+
+  function fallback() {
+    const ta = document.createElement('textarea');
+    ta.value = raw;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); }
+    catch { alert('کپی نشد، دستی کپی کنید.'); }
+    document.body.removeChild(ta);
+  }
+}
+</script>
+
+<style>
+  .pay-section {
+    padding: 40px 16px 64px;
+  }
+  .pay-container {
+    max-width: 640px;
+    margin-inline: auto;
+  }
+
+  /* بردکرامب */
+  .pay-breadcrumb {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .pay-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+  .pay-breadcrumb a:hover { color: var(--coral); }
+  .pay-breadcrumb span { margin: 0 8px; }
+  .pay-current { color: var(--text); font-weight: 700; }
+
+  /* کارت اصلی */
+  .pay-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 24px;
+    padding: 36px 32px 32px;
+    box-shadow: 0 20px 60px -30px rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .pay-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #f0db1e, var(--coral));
+    background-size: 200% 100%;
+    animation: payShimmer 3s ease-in-out infinite;
+  }
+  @keyframes payShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+
+  /* هدر */
+  .pay-header { text-align: center; margin-bottom: 24px; }
+  .pay-header-icon {
+    font-size: 2.6rem;
+    line-height: 1;
+    margin-bottom: 10px;
+    display: inline-block;
+    filter: drop-shadow(0 6px 16px rgba(255,127,80,.35));
+  }
+  .pay-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+  .pay-lead {
+    color: var(--text-muted);
+    font-size: .92rem;
+    margin: 0;
+    line-height: 1.8;
+  }
+  .pay-lead strong { color: var(--coral); }
+
+  /* مبلغ */
+  .pay-amount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 22px;
+    background: linear-gradient(135deg, rgba(255,127,80,.08), rgba(240,219,30,.04));
+    border: 1px solid rgba(255,127,80,.22);
+    border-radius: 14px;
+    margin-bottom: 20px;
+  }
+  .pay-amount-label {
+    font-size: .88rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .pay-amount-value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--coral);
+    letter-spacing: -.5px;
+  }
+  .pay-amount-value small {
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-inline-start: 4px;
+  }
+
+  /* کارت بانکی */
+  .pay-bank-card {
+    position: relative;
+    background: linear-gradient(135deg, #1e1e3a, #15172e);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-bottom: 28px;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid rgba(255,215,0,0.15);
+  }
+  .pay-bank-bg {
+    position: absolute;
+    top: -20px; left: -20px;
+    font-size: 6rem;
+    opacity: .06;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .pay-bank-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+  }
+  .pay-bank-label {
+    font-size: .72rem;
+    color: rgba(255,255,255,.55);
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+  .pay-copy-btn {
+    background: rgba(255,215,0,.1);
+    border: 1px solid rgba(255,215,0,.35);
+    color: #ffd700;
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: .78rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .25s ease;
+  }
+  .pay-copy-btn:hover {
+    background: rgba(255,215,0,.2);
+    transform: translateY(-1px);
+  }
+  .pay-copy-btn.is-copied {
+    background: rgba(76,175,80,.2);
+    border-color: #4caf50;
+    color: #4caf50;
+  }
+
+  .pay-bank-number {
+    font-family: 'Courier New', monospace;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 2px;
+    direction: ltr;
+    text-align: center;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 8px rgba(255,215,0,.15);
+  }
+  .pay-bank-holder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: .82rem;
+    color: rgba(255,255,255,.6);
+    position: relative;
+    z-index: 1;
+  }
+  .pay-bank-holder strong {
+    color: #ffd700;
+    font-weight: 700;
+  }
+
+  /* فرم */
+  .pay-form { text-align: right; }
+  .pay-section-title {
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 24px 0 4px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pay-section-hint {
+    font-size: .82rem;
+    color: var(--text-muted);
+    margin: 0 0 16px;
+    line-height: 1.7;
+  }
+
+  .pay-field {
+    margin-bottom: 16px;
+  }
+  .pay-field label {
+    display: block;
+    font-size: .88rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .pay-field input,
+  .pay-field .form-control,
+  #tracking_code {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border-soft);
+    border-radius: 12px;
+    font-size: 1rem;
+    color: var(--text);
+    transition: border-color .2s ease, box-shadow .2s ease;
+    font-family: inherit;
+  }
+  .pay-field input:focus {
+    outline: none;
+    border-color: var(--coral);
+    box-shadow: 0 0 0 4px rgba(255,127,80,.12);
+  }
+  .pay-input-ltr {
+    direction: ltr;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    text-align: left;
+  }
+  .pay-hint {
+    display: block;
+    font-size: .78rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .pay-error {
+    color: #dc3545;
+    font-size: .82rem;
+    margin-top: 6px;
+  }
+
+  .pay-submit {
+    width: 100%;
+    margin-top: 16px;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  /* پیام پایین */
+  .pay-note {
+    margin-top: 24px;
+    padding: 14px 18px;
+    background: rgba(59,130,246,.06);
+    border: 1px solid rgba(59,130,246,.18);
+    border-radius: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .pay-note-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .pay-note p {
+    margin: 0;
+    font-size: .85rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  .pay-back {
+    text-align: center;
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--border-soft);
+  }
+  .pay-back a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: .88rem;
+    font-weight: 600;
+    transition: color .2s ease;
+  }
+  .pay-back a:hover { color: var(--coral); }
+
+  @media (max-width: 520px) {
+    .pay-card { padding: 28px 20px 24px; }
+    .pay-bank-number { font-size: 1.15rem; letter-spacing: 1px; }
+    .pay-amount { padding: 14px 18px; }
+    .pay-amount-value { font-size: 1.2rem; }
+  }
+</style>
+{% endblock %}

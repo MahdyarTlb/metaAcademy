@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core',
+    'django_jalali',
+    'jalali_date',
 ]
 
 MIDDLEWARE = [

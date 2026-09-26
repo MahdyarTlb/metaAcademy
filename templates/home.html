@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% load jformat %}
+{% load persian %}
 
-{% block title %}متا آکادمی — بوت‌کمپ تابستانه پایتون{% endblock %}
+{% block title %}پارس ایکس — بوت‌کمپ تابستانه پایتون{% endblock %}
 
 {% block content %}  
   <!-- ===== هیرو ===== -->
@@ -46,7 +48,7 @@
             <span class="tdot tdot-r"></span>
             <span class="tdot tdot-y"></span>
             <span class="tdot tdot-g"></span>
-            <span class="terminal-title">python3 — متا آکادمی</span>
+            <span class="terminal-title">python3 — پارس ایکس</span>
           </div>
           <div class="terminal-body" id="terminalBody" data-typed>
             <p class="tline"><span class="prompt">&gt;&gt;&gt;</span> <span class="code">import metaAcademy</span></p>
@@ -175,7 +177,7 @@
     {# ---------- مار فانتزی (وسط، ریسپانسیو) ---------- #}
     <img 
       src="{% static 'img/snake.png' %}" 
-      alt="مار فانتزی متا آکادمی" 
+      alt="مار فانتزی پارس ایکس" 
       style="
         position: absolute;
         left: 50%;
@@ -262,10 +264,10 @@
               <p class="bootcamp-card-summary">مدرس: {{ bootcamp.teacher }}</p>
               <div class="bootcamp-card-meta">
                 <span class="bootcamp-badge bootcamp-badge-price {% if bootcamp.is_free %}is-free{% endif %}">
-                  {% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|floatformat:0 }} تومان{% endif %}
+                  {% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|price_fa }} تومان{% endif %}
                 </span>
                 {% if bootcamp.start_date %}
-                  <span class="bootcamp-badge bootcamp-badge-date">شروع: {{ bootcamp.start_date }}</span>
+                  <span class="bootcamp-badge bootcamp-badge-date">شروع: {{ bootcamp.start_date|jformat:"%d %B %Y" }}</span>
                 {% endif %}
                 {% if not bootcamp.is_registration_open %}
                   <span class="bootcamp-badge bootcamp-badge-closed">ثبت‌نام بسته شده</span>

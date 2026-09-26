@@ -6,6 +6,11 @@ import os
 from io import BytesIO
 import arabic_reshaper
 from bidi.algorithm import get_display
+try:
+    from PIL.features import check as _pil_check
+    HAS_RAQM = _pil_check('raqm')
+except Exception:
+    HAS_RAQM = False
 
 FONT_PATH = "static/fonts/YekanBakh-VF.woff2"
 
@@ -20,7 +25,10 @@ def to_persian_digits(text):
 def prepare_persian_text(text):
     """آماده‌سازی متن فارسی برای Pillow"""
     reshaped = arabic_reshaper.reshape(str(text))
-    return get_display(reshaped)[::-1]
+    displayed = get_display(reshaped)
+    if HAS_RAQM:
+        return displayed[::-1]
+    return displayed
 
 
 def load_font(size, weight=400):
@@ -67,32 +75,29 @@ def draw_centered_text(draw, text, center_x, y, font, fill='black', direction=No
 
     x = center_x - (text_width / 2)
 
-    if direction:
-        draw.text(
-            (x, y),
-            text,
-            fill=fill,
-            font=font,
-            direction=direction
-        )
-    else:
-        draw.text(
-            (x, y),
-            text,
-            fill=fill,
-            font=font,
-        )
+    kwargs = {'fill': fill, 'font': font}
+    
+    if direction and HAS_RAQM:
+        kwargs['direction'] = direction
 
-def generate_certificate_for_student(
-    enrollment,
-    base_template_path = os.path.join(settings.MEDIA_ROOT, 'preview', 'preview_signature.jpg')
-):
+    draw.text((x, y), text, **kwargs)
+
+def generate_certificate_for_student(enrollment, base_template_path=None):
     """
     ساخت مدرک دانشجو.
     نام و کد ملی با فونت، سایز و وزن متفاوت نوشته می‌شوند.
     """
     student = enrollment.student
+    bootcamp = enrollment.bootcamp
     
+    if base_template_path is None:
+        if bootcamp.certificate_template:
+            base_template_path = bootcamp.certificate_template.path
+        else:
+            base_template_path = os.path.join(
+                settings.MEDIA_ROOT, 'preview', 'preview_signature.jpg'
+            )
+            
     template = Image.open(
         base_template_path
     ).convert('RGBA')
@@ -166,7 +171,9 @@ def generate_certificate_for_student(
     template.convert('RGB').save(
         output,
         format='JPEG',
-        quality=90
+        quality=95,
+        optimize=True,
+        subsampling=0
     )
 
     output.seek(0)

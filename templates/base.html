@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}متا آکادمی — بوت‌کمپ تابستانه پایتون{% endblock %}</title>
+  <title>{% block title %}پارس ایکس — بوت‌کمپ تابستانه پایتون{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'img/icon.ico' %}">
   <meta name="description" content="بوت‌کمپ تابستانه پایتون؛ ۶ هفته آموزش عملی و پروژه‌محور برای دانش‌آموزان.">
 
@@ -16,14 +16,14 @@
   <header class="site-header">
     <div class="container header-inner">
       <a href="{% url 'core:home' %}" class="logo">
-        <img src="{% static 'img/metaAcademy.png' %}" alt="متا آکادمی" class="img logo-img">
-        <p class="logo-text"><span class="hl">متا</span> آکادمی</p>
+        <img src="{% static 'img/metaAcademy.png' %}" alt="پارس ایکس" class="img logo-img">
+        <p class="logo-text"><span class="hl">پارس</span> ایکس</p>
       </a>
 
       <nav class="main-nav" id="mainNav">
         <a href="{% url 'core:home' %}" class="nav-link{% if request.resolver_match.url_name == 'home' %} is-active{% endif %}">خانه</a>
         <a href="{% url 'core:bootcamp_list' %}" class="nav-link{% if request.resolver_match.url_name == 'bootcamp_list' or request.resolver_match.url_name == 'bootcamp_detail' %} is-active{% endif %}">دوره‌ها</a>
-        <a href="{% url 'core:check_view' %}" class="nav-link{% if request.resolver_match.url_name == 'check' %} is-active{% endif %}">پنل کاربری</a>
+        <a href="{% url 'core:dashboard' %}" class="nav-link{% if request.resolver_match.url_name == 'check' %} is-active{% endif %}">پنل کاربری</a>
       </nav>
       {% if not logged_in %}      
         <div class="header-actions">
@@ -69,7 +69,7 @@
       <div class="footer-brand">
         <a href="{% url 'core:home' %}" class="logo">
           <span class="logo-mark">&gt;&gt;&gt;</span>
-          <span class="logo-text">متا آکادمی</span>
+          <span class="logo-text">پارس ایکس</span>
         </a>
         <p class="footer-tag"># کدنویسی رو خیلی فان با هم یاد می‌گیریم</p>
       </div>
@@ -77,10 +77,10 @@
       <div class="footer-links">
         <a href="{% url 'core:home' %}">خانه</a>
         <a href="{% url 'core:bootcamp_list' %}">دوره‌ها</a>
-        <a href="{% url 'core:check_view' %}">پنل کاربری</a>
+        <a href="{% url 'core:dashboard' %}">پنل کاربری</a>
       </div>
 
-      <p class="footer-copy">© تابستان 1405 — متا آکادمی مستقر در خانه خلاق دانشگاه خوارزمی. تمام حقوق محفوظ است.</p>
+      <p class="footer-copy">© تابستان 1405 — پارس ایکس مستقر در خانه خلاق دانشگاه خوارزمی. تمام حقوق محفوظ است.</p>
     </div>
   </footer>
 

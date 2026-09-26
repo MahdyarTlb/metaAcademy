@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.core.validators import ValidationError
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect, render, get_object_or_404
-from .models import Student, VideoLink, Signature, Bootcamp, Enrollment, Session, PaymentRequest, enroll_student
+from .models import Student, VideoLink, Signature, Bootcamp, Enrollment, Session, PaymentRequest, ReferralSource, enroll_student
 from .utils import preview_signature_on_template, generate_certificate_for_student
 from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm, PaymentForm
 import openpyxl
@@ -36,27 +36,33 @@ def csrf_failure(request, reason=""):
 
 class HomeView(TemplateView):
     template_name = 'home.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        bootcamps = (
+            Bootcamp.objects
+            .filter(is_active=True)
+            .order_by('order', '-created_at')
+        )
 
-        context['bootcamps'] = Bootcamp.objects.filter(is_active=True)[:6]
+        context['bootcamps'] = bootcamps
+        context['bootcamps_count'] = bootcamps.count()
 
-        student_id = self.request.session.get('auth_student_id')
-        if student_id:
-            try:
-                student = Student.objects.get(pk=student_id)
-                context['logged_in'] = True
-                context['student'] = student
-            except Student.DoesNotExist:
-                # اگر دانشجو وجود نداشت، سشن رو پاک کن
-                self.request.session.pop('auth_student_id', None)
-                context['logged_in'] = False
-                context['student'] = None
-        else:
-            context['logged_in'] = False
-            context['student'] = None
-            
+        context['stats'] = {
+            'bootcamps': bootcamps.count(),
+            'sessions': Session.objects.filter(bootcamp__in=bootcamps).count(),
+            'enrollments': Enrollment.objects.filter(
+                bootcamp__in=bootcamps, is_active=True
+            ).count(),
+            'instructors': bootcamps.exclude(teacher='')
+                                    .values('teacher').distinct().count(),
+        }
+
+        context['instructors'] = list(
+            bootcamps.exclude(teacher='')
+                     .values_list('teacher', flat=True)
+                     .distinct()
+        )
         return context
  
 class BootcampListView(ListView):
@@ -82,15 +88,30 @@ class BootcampDetailView(DetailView):
 
     def get_queryset(self):
         return Bootcamp.objects.filter(is_active=True)
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        ref = self.request.GET.get('ref')
+        if ref:
+            self.request.session['ref_code'] = ref
+        context['ref'] = ref or self.request.session.get('ref_code', '')
+    
         student_id = self.request.session.get('auth_student_id')
-        context['is_enrolled'] = bool(
-            student_id and Enrollment.objects.filter(
-                student_id=student_id, bootcamp=self.object
-            ).exists()
-        )
+        enrollment = None
+        if student_id:
+            enrollment = Enrollment.objects.filter(
+                student_id=student_id,
+                bootcamp=self.object,
+            ).first()
+
+        # is_enrolled فقط وقتی True که ثبت‌نام فعال باشه (پرداخت تأیید شده)
+        context['is_enrolled'] = bool(enrollment and enrollment.is_active)
+
+        # برای تشخیص حالت pending توی تمپلیت
+        context['enrollment'] = enrollment
+        context['is_pending'] = bool(enrollment and not enrollment.is_active)
+
         context['sessions'] = self.object.sessions.all()
         return context
 
@@ -109,12 +130,23 @@ class RegisterView(CreateView):
         if email := self.request.GET.get('email'):
             initial['email'] = email
             
+        ref = self.request.GET.get('ref')
+        if ref:
+            self.request.session['ref_code'] = ref
+            
         return initial
 
     def form_valid(self, form):
         response = super().form_valid(form)
         student = form.instance
 
+        ref_code = self.request.session.get('ref_code')
+        if ref_code:
+            source = ReferralSource.objects.filter(code=ref_code).first()
+            if source:
+                student.referred_by = source
+                student.save(update_fields=['referred_by'])
+                
         # ذخیره‌ی سشن برای احراز هویت
         self.request.session['auth_student_id'] = student.pk
         self.request.session['student_name'] = student.name
@@ -133,11 +165,24 @@ class RegisterView(CreateView):
     def form_invalid(self, form):
         existing = getattr(form, 'existing_student', None)
         if existing:
-            # کاربر قبلاً ثبت‌نام کرده → بفرست به لاگین، نه پنل
+            # کاربر قبلاً ثبت‌نام کرده → ذخیره‌ی اطلاعات توی سشن
             self.request.session['auth_student_id'] = existing.pk
-            # ... بقیه سشن ...
-            messages.warning(self.request, f'⚠️ شما قبلاً ثبت‌نام کرده‌اید. به پنل هدایت می‌شوید.')
+            self.request.session['student_name'] = existing.name
+            self.request.session['student_age'] = existing.age
+            self.request.session['student_phone'] = existing.phone_number
+            self.request.session['student_email'] = existing.email or ''
+            self.request.session['student_reshte'] = existing.reshte
+            self.request.session['student_school'] = existing.school
+            self.request.session['student_city'] = existing.city
+            self.request.session['student_moaref'] = existing.moaref or ''
 
+            messages.warning(
+                self.request,
+                f'⚠️ این شماره موبایل قبلاً برای {existing.name} ثبت شده است. '
+                f'شما به پنل کاربری هدایت شدید.'
+            )
+
+            # اگه next داشتیم، ذخیره کن برای بعد از تأیید
             next_url = self.request.POST.get('next')
             if next_url:
                 self.request.session['next_url'] = next_url
@@ -259,39 +304,77 @@ class CheckView(View):
         return render(request, self.template_name, context)
 
 class EnrollView(View):
-    """ثبت‌نام کاربر لاگین‌کرده در یک دوره."""
+    
+    def _attach_referral(self, request, enrollment, student):
+        """منبع معرفی رو روی Enrollment و (اگه لازم بود) روی Student ست می‌کنه."""
+        ref_code = request.session.pop('ref_code')
+        if not ref_code:
+            return
+        
+        source = ReferralSource.objects.filter(code=ref_code).first()
+        if not source:
+            return
+        
+        # روی Enrollment
+        enrollment.referral_source = source
+        enrollment.save(update_fields=['referral_source'])
+        
+        # روی Student (اگه قبلاً منبعی نداشته)
+        if not student.referred_by:
+            student.referred_by = source
+            student.save(update_fields=['referred_by'])
 
     def get(self, request, slug):
         bootcamp = get_object_or_404(Bootcamp, slug=slug, is_active=True)
+
+        # ذخیره‌ی ref توی سشن
+        ref = request.GET.get('ref')
+        if ref:
+            request.session['ref_code'] = ref
 
         student_id = request.session.get('auth_student_id')
         if not student_id:
             return redirect(
                 f"{reverse('core:check_view')}?next={request.get_full_path()}"
             )
-
         student = get_object_or_404(Student, pk=student_id)
+
+        # اگه قبلاً Enrollment داره، همون رو چک کن
+        existing = Enrollment.objects.filter(student=student, bootcamp=bootcamp).first()
+        if existing:
+            self._attach_referral(request, existing, student)
+            if existing.is_active:
+                messages.info(request, 'قبلاً در این دوره ثبت‌نام کرده‌اید.')
+                return redirect('core:bootcamp_panel', slug=slug)
+            return redirect('core:registration_payment', slug=slug)
+
         with_cert = request.GET.get('cert') == '1'
 
+        # ─── مسیر دوره‌ی پولی ───
+        if bootcamp.price > 0:
+            if not bootcamp.can_register:
+                messages.warning(request, 'ظرفیت این دوره تکمیل شده.')
+                return redirect(bootcamp.get_absolute_url())
+
+            enrollment = Enrollment.objects.create(
+                student=student,
+                bootcamp=bootcamp,
+                with_certificate=with_cert,
+                is_active=False,
+            )
+            self._attach_referral(request, enrollment, student)   # ← اینجا
+            return redirect('core:registration_payment', slug=slug)
+
+        # ─── مسیر دوره‌ی رایگان ───
         try:
-            enroll_student(student, bootcamp, with_certificate=with_cert)
-            request.session['enrolled_bootcamp'] = bootcamp.slug
-            request.session['enrolled_student_id'] = student.pk
+            enrollment = enroll_student(student, bootcamp, with_certificate=with_cert)
+            self._attach_referral(request, enrollment, student)   # ← اینجا
         except ValidationError as e:
             messages.warning(request, e.message)
             return redirect(bootcamp.get_absolute_url())
 
         if with_cert and bootcamp.certificate_fee > 0:
-            messages.info(
-                request,
-                'ثبت‌نام شما انجام شد. برای فعال‌سازی مدرک، اطلاعات پرداخت را وارد کنید.'
-            )
-            return redirect('core:certificate', slug=slug)
-
-        messages.success(
-            request,
-            f'ثبت‌نام شما در «{bootcamp.title}» با موفقیت انجام شد.'
-        )
+            return redirect('core:certificate_payment', slug=slug)
         return redirect('core:bootcamp_panel', slug=slug)
     
 class PendingStudentMixin:
@@ -430,45 +513,155 @@ class StudentSessionRequiredMixin:
             return redirect('core:check_view')
         return super().dispatch(request, *args, **kwargs)
  
+
 class StudentSessionRequiredMixin:
-    """چک می‌کنه دانشجو لاگین کرده."""
-    def dispatch(self, request, *args, **kwargs):
+    """
+    چک می‌کنه دانشجو لاگین کرده.
+    - اگه لاگین نکرده → به صفحه‌ی ورود با ?next برمی‌گردونه
+    - اگه لاگین کرده → request.student رو ست می‌کنه
+    """
+
+    def get_authenticated_student(self, request):
+        """اگه کاربر لاگین باشه Student رو برمی‌گردونه، وگرنه None."""
         student_id = request.session.get('auth_student_id')
         if not student_id:
-            return redirect(f"{reverse('core:check_view')}?next={request.path}")
+            return None
         student = Student.objects.filter(pk=student_id).first()
         if not student:
             request.session.pop('auth_student_id', None)
-            return redirect('core:check_view')
+            return None
+        return student
+
+    def redirect_to_login(self, request):
+        """ریدایرکت به صفحه‌ی ورود با ذخیره‌ی مسیر فعلی."""
+        return redirect(f"{reverse('core:check_view')}?next={request.path}")
+
+    def dispatch(self, request, *args, **kwargs):
+        student = self.get_authenticated_student(request)
+        if not student:
+            return self.redirect_to_login(request)
         request.student = student
         return super().dispatch(request, *args, **kwargs)
 
 
 class EnrolledStudentRequiredMixin(StudentSessionRequiredMixin):
-    """چک می‌کنه دانشجو در دوره‌ی slug ثبت‌نام کرده."""
+    """
+    چک می‌کنه دانشجو لاگین کرده و در دوره ثبت‌نام کرده.
+    - اگه لاگین نکرده → صفحه‌ی ورود
+    - اگه در دوره ثبت‌نام نکرده → صفحه‌ی دوره
+    - اگه ثبت‌نام تأیید نشده و صفحه هم صفحه‌ی پرداخت نیست → صفحه‌ی پرداخت
+    - وگرنه → request.bootcamp و request.enrollment رو ست می‌کنه
+    """
+
     def dispatch(self, request, *args, **kwargs):
-        # ۱. چک لاگین
-        student_id = request.session.get('auth_student_id')
-        if not student_id:
-            return redirect(f"{reverse('core:check_view')}?next={request.path}")
-        student = Student.objects.filter(pk=student_id).first()
+        # ─── مرحله ۱: چک لاگین ───
+        student = self.get_authenticated_student(request)
         if not student:
-            request.session.pop('auth_student_id', None)
-            return redirect('core:check_view')
+            return self.redirect_to_login(request)
         request.student = student
 
-        # ۲. چک ثبت‌نام در دوره
+        # ─── مرحله ۲: چک ثبت‌نام در دوره ───
         slug = kwargs.get('slug')
+        if not slug:
+            # این mixin فقط برای ویوهایی هست که slug دارن
+            messages.error(request, 'دوره‌ای انتخاب نشده است.')
+            return redirect('core:bootcamp_list')
+
         bootcamp = get_object_or_404(Bootcamp, slug=slug, is_active=True)
-        enrollment = Enrollment.objects.filter(student=student, bootcamp=bootcamp).first()
+        enrollment = Enrollment.objects.filter(
+            student=student, bootcamp=bootcamp
+        ).first()
+
         if not enrollment:
             messages.warning(request, 'ابتدا در این دوره ثبت‌نام کنید.')
             return redirect(bootcamp.get_absolute_url())
+
+        # ─── مرحله ۳: اگه پرداخت تأیید نشده → صفحه‌ی پرداخت ───
+        current_url_name = (
+            request.resolver_match.url_name
+            if request.resolver_match else None
+        )
+        if not enrollment.is_active and current_url_name != 'registration_payment':
+            messages.info(
+                request,
+                'برای دسترسی به دوره، ابتدا هزینه‌ی ثبت‌نام را پرداخت کنید.'
+            )
+            return redirect('core:registration_payment', slug=slug)
+
+        # ─── مرحله ۴: ست کردن روی request ───
         request.bootcamp = bootcamp
         request.enrollment = enrollment
 
-        return super(StudentSessionRequiredMixin, self).dispatch(request, *args, **kwargs)
+        # حالا dispatch اصلی (View) رو صدا می‌زنیم؛
+        # چون StudentSessionRequiredMixin.dispatch دوباره لاگین چک می‌کنه،
+        # این بار مستقیم میریم به والدِ والد.
+        return super(StudentSessionRequiredMixin, self).dispatch(
+            request, *args, **kwargs
+        )
 
+class RegistrationPaymentView(EnrolledStudentRequiredMixin, View):
+    template_name = 'registration_payment.html'
+
+    def get(self, request, slug):
+        enrollment = request.enrollment
+        bootcamp = request.bootcamp
+
+        # ثبت‌نام فعال → پنل
+        if enrollment.is_active:
+            messages.info(request, 'ثبت‌نام شما قبلاً تأیید شده است.')
+            return redirect('core:bootcamp_panel', slug=slug)
+
+        # قبلاً کد فرستاده → برگرد به صفحه‌ی دوره
+        if enrollment.registration_payment_submitted:
+            messages.info(
+                request,
+                'درخواست پرداخت شما قبلاً ثبت شده و در انتظار تأیید است.'
+            )
+            return redirect(bootcamp.get_absolute_url())
+
+        # فرم
+        return render(request, self.template_name, {
+            'bootcamp': bootcamp,
+            'student': request.student,
+            'enrollment': enrollment,
+            'price': bootcamp.price,
+        })
+
+    def post(self, request, slug):
+        enrollment = request.enrollment
+        bootcamp = request.bootcamp
+
+        # گارد: قبلاً فرستاده
+        if enrollment.registration_payment_submitted:
+            messages.warning(
+                request,
+                'کد پیگیری قبلاً ثبت شده. منتظر تأیید پشتیبانی باشید.'
+            )
+            return redirect(bootcamp.get_absolute_url())
+
+        # گارد: قبلاً تأیید شده
+        if enrollment.is_active:
+            return redirect('core:bootcamp_panel', slug=slug)
+
+        tracking = request.POST.get('tracking_code', '').strip()
+        if not tracking or len(tracking) < 4:
+            messages.error(request, 'کد پیگیری معتبر وارد کنید.')
+            return redirect('core:registration_payment', slug=slug)
+
+        # ─── ذخیره ───
+        enrollment.registration_tracking_code = tracking
+        enrollment.registration_payment_submitted = True
+        enrollment.save(update_fields=[
+            'registration_tracking_code',
+            'registration_payment_submitted',
+        ])
+
+        messages.success(
+            request,
+            '✅ درخواست پرداخت ثبت شد. پس از تأیید پشتیبانی، ثبت‌نام فعال می‌شود.'
+        )
+        return redirect(bootcamp.get_absolute_url())
+    
 class StudentDashboardView(StudentSessionRequiredMixin, TemplateView):
     template_name = 'student_dashboard.html'
 
@@ -526,21 +719,21 @@ class SessionDetailView(EnrolledStudentRequiredMixin, TemplateView):
 class CertificateView(EnrolledStudentRequiredMixin, View):
     template_name = 'certificate.html'
 
-    # ─────────── تعیین حالت ───────────
     def _build_context(self, request, form=None):
         enrollment = request.enrollment
         student = request.student
         bootcamp = request.bootcamp
-        payment = getattr(enrollment, 'payment_request', None)
+        fee = bootcamp.certificate_fee
+        payment = PaymentRequest.objects.filter(enrollment=enrollment).first()
 
         base = {
             'student': student,
             'bootcamp': bootcamp,
             'enrollment': enrollment,
-            'fee': bootcamp.certificate_fee,
+            'fee': fee,
         }
 
-        # حالت ۱: مدرک آماده‌ی دانلود
+        # حالت ۱: مدرک آمادهی دانلود
         if enrollment.is_certified and enrollment.certificate_file:
             base.update({
                 'mode': 'download',
@@ -548,12 +741,9 @@ class CertificateView(EnrolledStudentRequiredMixin, View):
             })
             return base
 
-        # حالت ۲: درخواست پرداخت ثبت شده، در انتظار تأیید ادمین
-        if enrollment.with_certificate and bootcamp.certificate_fee > 0 and payment:
-            base.update({
-                'mode': 'pending',
-                'payment': payment,
-            })
+        # حالت ۲: در انتظار تأیید پرداخت
+        if fee > 0 and payment:
+            base.update({'mode': 'pending', 'payment': payment})
             return base
 
         # حالت ۳: هنوز دوره تموم نشده
@@ -561,68 +751,60 @@ class CertificateView(EnrolledStudentRequiredMixin, View):
             base.update({'mode': 'not_ready'})
             return base
 
-        # حالت ۴: فرم تکمیل اطلاعات (+ پرداخت اگه لازمه)
+        # حالت ۴: پولی و کاربر با مدرک ثبتنام نکرده → دکمهی فعالسازی
+        if fee > 0 and not enrollment.with_certificate:
+            base.update({'mode': 'activate_cert'})
+            return base
+
+        # حالت ۵: رایگان → فرم نام + کد ملی
         if form is None:
             form = CertificateForm(initial={
                 'name': student.name,
                 'national_code': student.national_code or '',
             })
-        base.update({
-            'mode': 'form',
-            'form': form,
-            'needs_payment': (
-                not enrollment.with_certificate and bootcamp.certificate_fee > 0
-            ),
-        })
+        base.update({'mode': 'form', 'form': form})
         return base
 
-    # ─────────── GET ───────────
     def get(self, request, slug):
-        return render(request, self.template_name,
-                      self._build_context(request))
+        enrollment = request.enrollment
+        bootcamp = request.bootcamp
+        fee = bootcamp.certificate_fee
+        payment = PaymentRequest.objects.filter(enrollment=enrollment).exists()
 
-    # ─────────── POST ───────────
+        # اگه پولی و کاربر با مدرک ثبتنام کرده و پرداخت ثبت نشده → برو صفحهی پرداخت
+        if fee > 0 and enrollment.with_certificate and not payment and not enrollment.is_certified:
+            return redirect('core:certificate_payment', slug=slug)
+
+        return render(request, self.template_name, self._build_context(request))
+
     def post(self, request, slug):
         enrollment = request.enrollment
         student = request.student
         bootcamp = request.bootcamp
+        fee = bootcamp.certificate_fee
 
         if enrollment.is_certified and enrollment.certificate_file:
             messages.error(request, '❌ مدرک این دوره قبلاً صادر شده است.')
             return redirect('core:certificate', slug=slug)
 
-        form = CertificateForm(request.POST)
+        # ─── گارد: اگه پولی و پرداخت تأیید نشده، مدرک صادر نکن ───
+        if fee > 0:
+            messages.error(
+                request,
+                'برای صدور این مدرک، ابتدا هزینه را پرداخت و تأیید کنید.'
+            )
+            return redirect('core:certificate', slug=slug)
 
+        # ─── فقط مدرک رایگان ───
+        form = CertificateForm(request.POST)
         if not form.is_valid():
             return render(request, self.template_name,
                           self._build_context(request, form=form))
 
-        # ذخیره‌ی نام و کد ملی روی پروفایل دانشجو
         student.name = form.cleaned_data['name']
         student.national_code = form.cleaned_data['national_code']
         student.save(update_fields=['name', 'national_code'])
 
-        # شاخه‌ی الف: کاربر بدون مدرک ثبت‌نام کرده ولی الان می‌خواد مدرک پولی
-        if not enrollment.with_certificate and bootcamp.certificate_fee > 0:
-            tracking = request.POST.get('tracking_code', '').strip()
-            if not tracking:
-                messages.error(request, 'لطفاً کد پیگیری پرداخت را وارد کنید.')
-                return render(request, self.template_name,
-                              self._build_context(request, form=form))
-
-            PaymentRequest.objects.update_or_create(
-                enrollment=enrollment,
-                defaults={'tracking_code': tracking},
-            )
-            enrollment.with_certificate = True
-            enrollment.save(update_fields=['with_certificate'])
-            messages.success(
-                request,
-                '✅ اطلاعات ذخیره شد. پس از تأیید پرداخت، مدرک شما صادر می‌شود.'
-            )
-            return redirect('core:certificate', slug=slug)
-
-        # شاخه‌ی ب: مدرک رایگان یا از قبل با مدرک ثبت‌نام کرده → صدور فوری
         if not enrollment.is_completed:
             messages.error(request, 'هنوز واجد شرایط دریافت مدرک نیستید.')
             return redirect('core:certificate', slug=slug)
@@ -634,15 +816,88 @@ class CertificateView(EnrolledStudentRequiredMixin, View):
             )
             enrollment.is_certified = True
             enrollment.certificate_issued_at = timezone.now()
+            enrollment.with_certificate = True
             enrollment.save(update_fields=[
-                'certificate_file', 'is_certified', 'certificate_issued_at'
+                'certificate_file', 'is_certified',
+                'certificate_issued_at', 'with_certificate',
             ])
             messages.success(request, '✅ مدرک شما با موفقیت صادر شد.')
         except Exception as e:
             messages.error(request, f'خطا در ساخت مدرک: {e}')
 
         return redirect('core:certificate', slug=slug)
-        
+
+class CertificatePaymentView(EnrolledStudentRequiredMixin, View):
+    """صفحهی جدا برای پرداخت هزینهی مدرک + ثبت اطلاعات چاپ روی مدرک."""
+
+    template_name = 'certificate_payment.html'
+
+    def get(self, request, slug):
+        enrollment = request.enrollment
+        student = request.student
+        bootcamp = request.bootcamp
+
+        # اگه مدرک صادر شده، برو صفحهی مدرک
+        if enrollment.is_certified and enrollment.certificate_file:
+            return redirect('core:certificate', slug=slug)
+
+        # اگه پرداخت قبلاً ثبت شده، برو صفحهی مدرک (pending)
+        if PaymentRequest.objects.filter(enrollment=enrollment).exists():
+            return redirect('core:certificate', slug=slug)
+
+        form = CertificateForm(initial={
+            'name': student.name,
+            'national_code': student.national_code or '',
+        })
+
+        return render(request, self.template_name, {
+            'form': form,
+            'student': student,
+            'bootcamp': bootcamp,
+            'enrollment': enrollment,
+            'fee': bootcamp.certificate_fee,
+        })
+
+    def post(self, request, slug):
+        enrollment = request.enrollment
+        student = request.student
+        bootcamp = request.bootcamp
+
+        form = CertificateForm(request.POST)
+        tracking = request.POST.get('tracking_code', '').strip()
+
+        if not form.is_valid():
+            return render(request, self.template_name, {
+                'form': form, 'student': student,
+                'bootcamp': bootcamp, 'enrollment': enrollment,
+                'fee': bootcamp.certificate_fee,
+            })
+
+        if not tracking:
+            messages.error(request, 'کد پیگیری پرداخت را وارد کنید.')
+            return render(request, self.template_name, {
+                'form': form, 'student': student,
+                'bootcamp': bootcamp, 'enrollment': enrollment,
+                'fee': bootcamp.certificate_fee,
+            })
+
+        # ذخیرهی نام و کد ملی روی پروفایل
+        student.name = form.cleaned_data['name']
+        student.national_code = form.cleaned_data['national_code']
+        student.save(update_fields=['name', 'national_code'])
+
+        # ساخت درخواست پرداخت
+        PaymentRequest.objects.update_or_create(
+            enrollment=enrollment,
+            defaults={'tracking_code': tracking},
+        )
+
+        messages.success(
+            request,
+            '✅ درخواست پرداخت شما ثبت شد. پس از تأیید توسط پشتیبانی، مدرک صادر میشود.'
+        )
+        return redirect('core:certificate', slug=slug)
+    
 @login_required(login_url="/admins/admin")
 def admin_dashboard(request):
     # ========== آمار ==========
@@ -967,4 +1222,3 @@ def import_excel(request):
         form = ExcelUploadForm()
     
     return render(request, 'import_excel.html', {'form': form})
-

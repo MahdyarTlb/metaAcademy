@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% load jformat %}
+{% load persian %}
 
-{% block title %}{{ bootcamp.title }} — متا آکادمی{% endblock %}
+{% block title %}{{ bootcamp.title }} — پارس ایکس{% endblock %}
 
 {% block content %}
 <section class="hero bootcamp-hero-section" style="padding-bottom: 32px;">
@@ -51,11 +53,23 @@
                   <div class="syllabus-card-head">
                     <span class="syllabus-number">{{ session.number|stringformat:"02d" }}</span>
                     {% if not is_enrolled %}
-                      <span class="syllabus-lock" title="برای دیدن محتوا ثبت‌نام کنید">
-                        <svg ...>...</svg>
+                      <span class="syllabus-lock syllabus-lock-locked" title="برای دیدن محتوا ثبت‌نام کنید">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="4" y="11" width="16" height="10" rx="2.5"/>
+                          <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                          <circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/>
+                        </svg>
                       </span>
                     {% else %}
-                      <span class="syllabus-badge">{{ session.status_label }}</span>
+                      <span class="syllabus-lock syllabus-lock-open" title="شما در این دوره ثبت‌نام کرده‌اید">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="4" y="11" width="16" height="10" rx="2.5"/>
+                          <path d="M8 11V7a4 4 0 0 1 7.5-2"/>
+                          <circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/>
+                        </svg>
+                      </span>
                     {% endif %}
                   </div>
                   <h3 class="syllabus-card-title">{{ session.title }}</h3>
@@ -70,13 +84,13 @@
       <aside class="bootcamp-detail-info">
         <ul class="bootcamp-info-list">
           <li>
-            <span class="bootcamp-info-label">شهریه</span>
-            <span class="bootcamp-info-value">{% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|floatformat:0 }} تومان{% endif %}</span>
+            <span class="bootcamp-info-label">هزینه</span>
+            <span class="bootcamp-info-value">{% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|price_fa }} تومان{% endif %}</span>
           </li>
           {% if bootcamp.start_date %}
           <li>
             <span class="bootcamp-info-label">تاریخ شروع</span>
-            <span class="bootcamp-info-value">{{ bootcamp.start_date }}</span>
+            <span class="bootcamp-info-value">{{ bootcamp.start_date|jformat:"%d %B %Y" }}</span>
           </li>
           <li>
             <span class="bootcamp-info-label">مدرس</span>
@@ -104,37 +118,80 @@
         </ul>
 
         {% if is_enrolled %}
-          <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}" 
-            class="btn btn-ghost btn-large bootcamp-cta">
-            ✅ ثبت‌نام شده — ورود به دوره
-          </a>
+        {# ۱. ثبت‌نام فعال — دسترسی به پنل #}
+        <a href="{% url 'core:bootcamp_panel' bootcamp.slug %}"
+          class="btn btn-ghost btn-large bootcamp-cta">
+          ✅ ثبت‌نام شده — ورود به دوره
+        </a>
 
-        {% elif bootcamp.can_register %}
-          {% if bootcamp.certificate_fee > 0 %}
-            <div class="enroll-options">
-              <a href="{% url 'core:enroll' bootcamp.slug %}?cert=0" 
-                class="btn btn-ghost btn-large enroll-opt">
-                <span>ثبت‌نام بدون مدرک</span>
-                <small>رایگان</small>
-              </a>
-              <a href="{% url 'core:enroll' bootcamp.slug %}?cert=1" 
-                class="btn btn-primary btn-large enroll-opt">
-                <span>ثبت‌نام با مدرک</span>
-                <small>{{ bootcamp.certificate_fee|floatformat:0 }} تومان</small>
-              </a>
+      {% elif is_pending %}
+        {% if enrollment.registration_payment_submitted %}
+          <div class="pending-notice">
+            <span class="pending-icon">⏳</span>
+            <div class="pending-text">
+              <strong>در انتظار تأیید پرداخت</strong>
+              <small>کد پیگیری: <code dir="ltr">{{ enrollment.registration_tracking_code }}</code></small>
+              <small>پس از تأیید پشتیبانی، به‌صورت خودکار فعال می‌شود.</small>
             </div>
-          {% else %}
-            <a href="{% url 'core:enroll' bootcamp.slug %}?cert=1" 
-              class="btn btn-primary btn-large bootcamp-cta">
-              ثبت‌نام در این دوره <small style="opacity:.8;">(مدرک رایگان)</small>
-            </a>
-          {% endif %}
-
-        {% elif bootcamp.is_full %}
-          <button class="btn btn-ghost btn-large bootcamp-cta" disabled>ظرفیت تکمیل شد</button>
+          </div>
         {% else %}
-          <button class="btn btn-ghost btn-large bootcamp-cta" disabled>ثبت‌نام بسته شده</button>
+          <a href="{% url 'core:registration_payment' bootcamp.slug %}"
+            class="btn btn-primary btn-large bootcamp-cta">
+            💳 تکمیل پرداخت ثبت‌نام
+          </a>
         {% endif %}
+          </small>
+        </a>
+
+      {% elif bootcamp.can_register %}
+        {# ۳. ثبت‌نام باز #}
+        {% if bootcamp.certificate_fee > 0 %}
+          <div class="enroll-options">
+            {# بدون مدرک #}
+            <a href="{% url 'core:enroll' bootcamp.slug %}?cert=0{% if ref %}&ref={{ ref }}{% endif %}"
+              class="btn btn-ghost btn-large enroll-opt">
+              <span>ثبت‌نام بدون مدرک</span>
+              <small>
+                {% if bootcamp.is_free %}رایگان
+                {% else %}{{ bootcamp.price|price_fa }} تومان{% endif %}
+              </small>
+            </a>
+
+            {# با مدرک #}
+            <a href="{% url 'core:enroll' bootcamp.slug %}?cert=1{% if ref %}&ref={{ ref }}{% endif %}"
+              class="btn btn-primary btn-large enroll-opt">
+              <span>ثبت‌نام با مدرک</span>
+              <small>
+                {% if bootcamp.is_free %}
+                  {{ bootcamp.certificate_fee|price_fa }} تومان
+                {% else %}
+                  {{ bootcamp.price|price_fa }} + {{ bootcamp.certificate_fee|price_fa }} تومان
+                {% endif %}
+              </small>
+            </a>
+          </div>
+        {% else %}
+          <a href="{% url 'core:enroll' bootcamp.slug %}?cert=1{% if ref %}&ref={{ ref }}{% endif %}"
+            class="btn btn-primary btn-large bootcamp-cta">
+            ثبت‌نام در این دوره
+            <small style="opacity:.8;">
+              {% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|price_fa }} تومان{% endif %}
+            </small>
+          </a>
+        {% endif %}
+
+{% elif bootcamp.is_full %}
+  {# ۴. ظرفیت تکمیل #}
+  <button class="btn btn-ghost btn-large bootcamp-cta" disabled>
+    ظرفیت تکمیل شد
+  </button>
+
+{% else %}
+  {# ۵. ثبت‌نام بسته #}
+  <button class="btn btn-ghost btn-large bootcamp-cta" disabled>
+    ثبت‌نام بسته شده
+  </button>
+{% endif %}
       </aside>
     </div>
   </section>
@@ -391,6 +448,57 @@
       margin-inline-start: 0;
       aspect-ratio: 16 / 9;
     }
+  }
+    .syllabus-lock {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    transition: all .3s cubic-bezier(.4,0,.2,1);
+    flex-shrink: 0;
+  }
+  .syllabus-lock svg {
+    width: 16px;
+    height: 16px;
+    transition: transform .3s ease;
+  }
+
+  /* ─── حالت قفل بسته ─── */
+  .syllabus-lock-locked {
+    background: rgba(0, 0, 0, 0.055);
+    color: var(--text-muted);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+  }
+  .syllabus-card:hover .syllabus-lock-locked {
+    background: rgba(249, 115, 22, 0.13);
+    color: #c2410c;
+    transform: scale(1.08);
+  }
+  .syllabus-card:hover .syllabus-lock-locked svg {
+    transform: rotate(-10deg);
+  }
+
+  /* ─── حالت قفل باز (ثبت‌نام‌شده) ─── */
+  .syllabus-lock-open {
+    background: linear-gradient(135deg, rgba(16,185,129,.18), rgba(34,197,94,.12));
+    color: #047857;
+    box-shadow:
+      inset 0 0 0 1px rgba(16,185,129,.25),
+      0 4px 12px -4px rgba(16,185,129,.3);
+  }
+  .syllabus-card:hover .syllabus-lock-open {
+    transform: scale(1.08);
+  }
+  .syllabus-card:hover .syllabus-lock-open svg {
+    transform: rotate(6deg);
+  }
+
+  /* اگه خواستی روی موبایل کوچک‌تر بشه */
+  @media (max-width: 480px) {
+    .syllabus-lock { width: 30px; height: 30px; }
+    .syllabus-lock svg { width: 14px; height: 14px; }
   }
 </style>
 {% endblock %}

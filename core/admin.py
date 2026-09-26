@@ -4,15 +4,21 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from django.db import transaction
 
 from .models import (
     Bootcamp, Session, Student, Enrollment,
-    PaymentRequest, Signature,
+    PaymentRequest, Signature, ReferralSource,
 )
 from .utils import generate_certificate_for_student
 
+from django_jalali.admin.filters import JDateFieldListFilter
+from django_jalali.templatetags import jformat
+import jdatetime
 
-
+from django import forms
+from jalali_date.fields import JalaliDateField
+from jalali_date.widgets import AdminJalaliDateWidget
 # ═══════════════════════════════════════════════════════
 #  اکشن‌های سفارشی (روی Enrollment)
 # ═══════════════════════════════════════════════════════
@@ -23,19 +29,33 @@ def verify_payment_and_issue_certificate(modeladmin, request, queryset):
     skipped = 0
     errors = []
 
+    # اگه queryset از نوع PaymentRequest باشه، تبدیل کن به Enrollment
+    if queryset.model.__name__ == 'PaymentRequest':
+        enrollment_ids = queryset.values_list('enrollment_id', flat=True)
+        queryset = Enrollment.objects.filter(pk__in=enrollment_ids)
+
     for enrollment in queryset.select_related('student', 'bootcamp'):
         if enrollment.is_certified and enrollment.certificate_file:
             skipped += 1
             continue
         try:
+            if not enrollment.student.national_code:
+                errors.append(
+                    f'{enrollment.student.name} ({enrollment.bootcamp.title}): '
+                    f'کد ملی ثبت نشده — کاربر باید اول فرم پرداخت رو پر کنه'
+                )
+                continue
+
             cert_content = generate_certificate_for_student(enrollment)
             if enrollment.certificate_file:
                 enrollment.certificate_file.delete(save=False)
             enrollment.certificate_file.save(cert_content.name, cert_content, save=False)
             enrollment.is_certified = True
+            enrollment.with_certificate = True
             enrollment.certificate_issued_at = timezone.now()
             enrollment.save(update_fields=[
-                'certificate_file', 'is_certified', 'certificate_issued_at'
+                'certificate_file', 'is_certified',
+                'with_certificate', 'certificate_issued_at',
             ])
             count += 1
         except Exception as e:
@@ -47,7 +67,6 @@ def verify_payment_and_issue_certificate(modeladmin, request, queryset):
         messages.info(request, f'ℹ️ {skipped} مورد از قبل مدرک داشتند و رد شدند.')
     for err in errors:
         messages.warning(request, f'⚠️ {err}')
-
 
 verify_payment_and_issue_certificate.short_description = '✅ تأیید پرداخت و صدور مدرک'
 
@@ -96,7 +115,47 @@ def revoke_certificate(modeladmin, request, queryset):
 
 revoke_certificate.short_description = '🗑️ لغو مدرک و حذف فایل'
 
+@transaction.atomic
+def approve_registration_payment(modeladmin, request, queryset):
+    """تأیید پرداخت ثبت‌نام + فعال‌سازی."""
+    count = 0
+    errors = []
+    for enrollment in queryset.select_related('student', 'bootcamp'):
+        if enrollment.is_active:
+            continue
+        try:
+            bootcamp = Bootcamp.objects.select_for_update().get(pk=enrollment.bootcamp_id)
+            if bootcamp.remaining_capacity is not None and bootcamp.remaining_capacity <= 0:
+                errors.append(f'{enrollment.student.name} — ظرفیت {bootcamp.title} تکمیل است')
+                continue
 
+            enrollment.is_active = True
+            enrollment.registration_paid_at = timezone.now()
+            enrollment.save(update_fields=['is_active', 'registration_paid_at'])
+
+            if bootcamp.remaining_capacity is not None:
+                bootcamp.remaining_capacity -= 1
+                bootcamp.save(update_fields=['remaining_capacity'])
+            count += 1
+        except Exception as e:
+            errors.append(f'{enrollment.student.name}: {e}')
+
+    if count:
+        messages.success(request, f'✅ ثبت‌نام {count} نفر فعال شد.')
+    for err in errors:
+        messages.warning(request, f'⚠️ {err}')
+
+approve_registration_payment.short_description = '✅ تأیید پرداخت و فعال‌سازی ثبت‌نام'
+
+def reset_payment_submission(modeladmin, request, queryset):
+    """ریست کردن کد پیگیری برای ارسال مجدد توسط کاربر."""
+    count = queryset.update(
+        registration_payment_submitted=False,
+        registration_tracking_code=None,
+    )
+    messages.warning(request, f'🔄 {count} درخواست پرداخت ریست شد.')
+
+reset_payment_submission.short_description = '🔄 ریست کد پیگیری (ارسال مجدد)'
 # ═══════════════════════════════════════════════════════
 #  Session (inline توی Bootcamp)
 # ═══════════════════════════════════════════════════════
@@ -116,16 +175,27 @@ class SessionInline(admin.TabularInline):
 # ═══════════════════════════════════════════════════════
 #  Bootcamp
 # ═══════════════════════════════════════════════════════
+class BootcampAdminForm(forms.ModelForm):
+    start_date = JalaliDateField(
+        label='تاریخ شروع',
+        widget=AdminJalaliDateWidget,
+        required=False,
+    )
 
+    class Meta:
+        model = Bootcamp
+        fields = '__all__'
+        
 @admin.register(Bootcamp)
 class BootcampAdmin(admin.ModelAdmin):
+    form = BootcampAdminForm
     list_display = [
-        'title', 'slug', 'price_display', 'certificate_fee_display', 'start_date',
+        'title', 'slug', 'price_display', 'certificate_fee_display', 'start_date_jalali',
         'sessions_display', 'enrollments_display',
         'capacity_display', 'is_active', 'is_registration_open', 'order',
     ]
     list_editable = ['is_active', 'is_registration_open', 'order']
-    list_filter = ['is_active', 'is_registration_open', 'start_date']
+    list_filter = ['is_active', 'is_registration_open', ('start_date', JDateFieldListFilter),]
     search_fields = ['title', 'slug', 'subtitle', 'summary', 'teacher']
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['created_at', 'remaining_capacity', 'stats_display']
@@ -148,7 +218,7 @@ class BootcampAdmin(admin.ModelAdmin):
             'description': 'ظرفیت باقی‌مانده خودکار با هر ثبت‌نام کم می‌شه.',
         }),
         ('🎓 مدرک', {
-            'fields': ('certificate_fee',),
+            'fields': ('certificate_fee', 'certificate_template'),
             'description': (
             'صفر = مدرک رایگان (در فرم ثبت‌نام فقط گزینه‌ی «با مدرک» نمایش داده می‌شه). '
             'بیشتر از صفر = هنگام ثبت‌نام، دو گزینه «بدون مدرک» و «با مدرک» به کاربر نشون داده می‌شه.')
@@ -180,6 +250,13 @@ class BootcampAdmin(admin.ModelAdmin):
         return obj.enrollments.count()
     enrollments_display.short_description = 'ثبت‌نام'
 
+    @admin.display(description='تاریخ شروع', ordering='start_date')
+    def start_date_jalali(self, obj):
+        if not obj.start_date:
+            return '—'
+        jdate = jdatetime.date.fromgregorian(date=obj.start_date)
+        return jdate.strftime('%Y/%m/%d')
+    
     def capacity_display(self, obj):
         if obj.capacity is None:
             return 'نامحدود'
@@ -218,7 +295,7 @@ class BootcampAdmin(admin.ModelAdmin):
 class SessionAdmin(admin.ModelAdmin):
     list_display = [
         'bootcamp_link', 'number', 'title', 'session_type',
-        'date', 'status_display', 'is_live', 'has_video',
+        'date_jalali', 'status_display', 'is_live', 'has_video',
     ]
     list_editable = ['is_live']
     list_filter = ['bootcamp', 'session_type', 'is_live', 'date']
@@ -267,6 +344,13 @@ class SessionAdmin(admin.ModelAdmin):
         return bool(obj.video_url)
     has_video.boolean = True
     has_video.short_description = 'ویدیو'
+    @admin.display(description='تاریخ', ordering='date')
+    
+    def date_jalali(self, obj):
+        if not obj.date:
+            return '—'
+        jdate = jdatetime.date.fromgregorian(date=obj.date)
+        return jdate.strftime('%Y/%m/%d')
 
 
 # ═══════════════════════════════════════════════════════
@@ -276,10 +360,10 @@ class SessionAdmin(admin.ModelAdmin):
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = [
-        'student_link', 'bootcamp_link', 'progress_display',
-        'is_certified', 'certificate_link', 'created_at',
+        'student_link', 'bootcamp_link', 'progress_display', 'referral_source_display', 'registration_status', 'registration_tracking_code',
+        'is_certified', 'certificate_link', 'created_at_jalali',
     ]
-    list_filter = ['is_certified', 'bootcamp', 'created_at']
+    list_filter = ['is_active', 'is_certified', 'with_certificate', 'bootcamp', 'created_at']
     search_fields = [
         'student__name', 'student__phone_number', 'student__national_code',
         'bootcamp__title',
@@ -291,7 +375,9 @@ class EnrollmentAdmin(admin.ModelAdmin):
     actions = [
         verify_payment_and_issue_certificate,
         regenerate_certificates,
+        reset_payment_submission,
         revoke_certificate,
+        approve_registration_payment,
     ]
     list_select_related = ['student', 'bootcamp']
     autocomplete_fields = ['student', 'bootcamp']
@@ -314,6 +400,12 @@ class EnrollmentAdmin(admin.ModelAdmin):
     )
 
     # ---- ستون‌ها ----
+    def referral_source_display(self, obj):
+        if not obj.referral_source:
+            return '—'
+        return format_html('<code>{}</code>', obj.referral_source.name)
+    referral_source_display.short_description = 'منبع'
+
     def student_link(self, obj):
         url = reverse('admin:core_student_change', args=[obj.student_id])
         return format_html('<a href="{}">{}</a>', url, obj.student.name)
@@ -362,7 +454,20 @@ class EnrollmentAdmin(admin.ModelAdmin):
             )
         return '❌ مدرکی صادر نشده'
     certificate_preview.short_description = 'پیش‌نمایش'
+    
+    def registration_status(self, obj):
+        if obj.is_active:
+            return mark_safe('<span style="color:#10b981; font-weight:700;">✅ فعال</span>')
+        if obj.registration_payment_submitted:
+            return mark_safe('<span style="color:#f59e0b; font-weight:700;">⏳ در انتظار تأیید</span>')
+        return mark_safe('<span style="color:#dc3545; font-weight:700;">❌ پرداخت نشده</span>')
+    registration_status.short_description = 'ثبت‌نام'
 
+    def created_at_jalali(self, obj):
+            if not obj.created_at:
+                return '—'
+            jdate = jdatetime.datetime.fromgregorian(date=obj.created_at)
+            return jdate.strftime('%Y/%m/%d - %H:%M')
 
 # ═══════════════════════════════════════════════════════
 #  Student
@@ -372,7 +477,7 @@ class EnrollmentAdmin(admin.ModelAdmin):
 class StudentAdmin(admin.ModelAdmin):
     list_display = [
         'name', 'phone_number', 'national_code',
-        'enrollments_count', 'reshte', 'city', 'created_at',
+        'enrollments_count', 'referred_by_display', 'reshte', 'city', 'created_at_jalali',
     ]
     list_filter = ['reshte', 'city', 'created_at']
     search_fields = [
@@ -396,6 +501,12 @@ class StudentAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
     )
+
+    def referred_by_display(self, obj):
+        if not obj.referred_by:
+            return '—'
+        return format_html('<code>{}</code>', obj.referred_by.name)
+    referred_by_display.short_description = 'معرف'
 
     def enrollments_count(self, obj):
         return obj.enrollments.count()
@@ -422,6 +533,12 @@ class StudentAdmin(admin.ModelAdmin):
             '</ul>'
         )
     enrollments_display.short_description = 'دوره‌های دانشجو'
+    
+    def created_at_jalali(self, obj):
+        if not obj.created_at:
+            return '—'
+        jdate = jdatetime.datetime.fromgregorian(date=obj.created_at)
+        return jdate.strftime('%Y/%m/%d - %H:%M')
 
 
 # ═══════════════════════════════════════════════════════
@@ -432,7 +549,7 @@ class StudentAdmin(admin.ModelAdmin):
 class PaymentRequestAdmin(admin.ModelAdmin):
     list_display = [
         'student_link', 'bootcamp_link', 'tracking_code',
-        'created_at', 'payment_status', 'certificate_status',
+        'created_at_jalali', 'payment_status', 'certificate_status',
     ]
     list_filter = ['created_at', 'enrollment__bootcamp']
     search_fields = [
@@ -474,6 +591,12 @@ class PaymentRequestAdmin(admin.ModelAdmin):
         return bool(obj.enrollment and obj.enrollment.certificate_file)
     certificate_status.boolean = True
     certificate_status.short_description = 'مدرک؟'
+    
+    def created_at_jalali(self, obj):
+        if not obj.created_at:
+            return '—'
+        jdate = jdatetime.datetime.fromgregorian(date=obj.created_at)
+        return jdate.strftime('%Y/%m/%d - %H:%M')
 
 
 # # ═══════════════════════════════════════════════════════
@@ -495,11 +618,100 @@ class SignatureAdmin(admin.ModelAdmin):
         return '❌'
     signature_preview.short_description = 'پیش‌نمایش امضا'
 
+@admin.register(ReferralSource)
+class ReferralSourceAdmin(admin.ModelAdmin):
+    list_display = [
+        'name', 'code',
+        'register_link_display',
+        'students_count_display',
+        'enrollments_count_display',
+        'created_at',
+    ]
+    search_fields = ['name', 'code']
+    readonly_fields = [
+        'links_display',
+        'students_count_display',
+        'enrollments_count_display',
+        'created_at',
+    ]
 
+    fieldsets = (
+        ('اطلاعات', {
+            'fields': ('name', 'code'),
+            'description': 'کد رو خودت انتخاب کن — حروف انگلیسی و خط تیره.',
+        }),
+        ('لینک‌ها', {
+            'fields': ('links_display',),
+        }),
+        ('آمار', {
+            'fields': ('students_count_display', 'enrollments_count_display', 'created_at'),
+        }),
+    )
+
+    def register_link_display(self, obj):
+        if not obj.pk:
+            return '—'
+        return format_html('<code>{}</code>', obj.register_link)
+    register_link_display.short_description = 'لینک ثبت‌نام'
+
+    def links_display(self, obj):
+        if not obj.pk:
+            return '—'
+
+        from .models import Bootcamp
+        bootcamps = Bootcamp.objects.filter(is_active=True)
+
+        parts = []
+
+        # لینک عمومی
+        parts.append(
+            f'<div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">'
+            f'<strong style="min-width:120px;">لینک عمومی:</strong>'
+            f'<code style="background:#f0f0f0; padding:6px 12px; border-radius:6px; '
+            f'font-size:14px; flex:1;">{obj.register_link}</code>'
+            f'<button type="button" onclick="navigator.clipboard.writeText(location.origin + \'{obj.register_link}\')" '
+            f'style="background:#417690; color:#fff; border:none; padding:6px 14px; '
+            f'border-radius:6px; cursor:pointer; font-size:13px;">📋 کپی</button>'
+            f'</div>'
+        )
+
+        # لینک per bootcamp
+        for b in bootcamps:
+            link = obj.bootcamp_link(b.slug)
+            parts.append(
+                f'<div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">'
+                f'<strong style="min-width:120px;">{b.title}:</strong>'
+                f'<code style="background:#f0f0f0; padding:6px 12px; border-radius:6px; '
+                f'font-size:14px; flex:1;">{link}</code>'
+                f'<button type="button" onclick="navigator.clipboard.writeText(location.origin + \'{link}\')" '
+                f'style="background:#417690; color:#fff; border:none; padding:6px 14px; '
+                f'border-radius:6px; cursor:pointer; font-size:13px;">📋 کپی</button>'
+                f'</div>'
+            )
+
+        return mark_safe('<div style="padding:10px 0;">' + ''.join(parts) + '</div>')
+    links_display.short_description = 'لینک‌های اختصاصی'
+
+    def students_count_display(self, obj):
+        if not obj.pk:
+            return '—'
+        count = obj.students_count
+        url = reverse('admin:core_student_changelist') + f'?referred_by__id__exact={obj.id}'
+        return format_html('<a href="{}">👤 {} دانشجو</a>', url, count)
+    students_count_display.short_description = 'دانشجوها'
+
+    def enrollments_count_display(self, obj):
+        if not obj.pk:
+            return '—'
+        count = obj.enrollments_count
+        url = reverse('admin:core_enrollment_changelist') + f'?referral_source__id__exact={obj.id}'
+        return format_html('<a href="{}">📚 {} ثبت‌نام</a>', url, count)
+    enrollments_count_display.short_description = 'ثبت‌نام‌ها'
+    
 # ═══════════════════════════════════════════════════════
 #  تنظیمات کلی
 # ═══════════════════════════════════════════════════════
 
-admin.site.site_header = '🎓 متا آکادمی — پنل مدیریت'
-admin.site.site_title = 'مدیریت متا آکادمی'
+admin.site.site_header = '🎓 پارس ایکس — پنل مدیریت'
+admin.site.site_title = 'مدیریت پارس ایکس'
 admin.site.index_title = 'داشبورد مدیریت'

@@ -24,6 +24,8 @@ urlpatterns = [
     path('panel/<slug:slug>/', views.BootcampPanelView.as_view(), name='bootcamp_panel'),
     path('panel/<slug:slug>/sessions/<int:number>/', views.SessionDetailView.as_view(), name='session_detail'),
     path('panel/<slug:slug>/certificate/', views.CertificateView.as_view(), name='certificate'),
+    path('panel/<slug:slug>/certificate/payment/', views.CertificatePaymentView.as_view(), name='certificate_payment'),
+    path('panel/<slug:slug>/registration-payment/', views.RegistrationPaymentView.as_view(), name='registration_payment'),
     
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('payment/', views.payment_request_view, name='payment'),

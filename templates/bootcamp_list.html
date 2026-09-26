@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
+{% load jformat %}
+{% load persian %}
 
-{% block title %}دوره‌ها — متا آکادمی{% endblock %}
+{% block title %}دوره‌ها — پارس ایکس{% endblock %}
 
 {% block content %}
   <section class="curriculum" style="padding-top: 48px;">
     <div class="container">
-      <p class="eyebrow eyebrow-center"># دوره‌های متا آکادمی</p>
+      <p class="eyebrow eyebrow-center"># دوره‌های پارس ایکس</p>
       <h2 class="section-title">دوره‌ای رو انتخاب کن که مناسب توئه</h2>
 
       {% if bootcamps %}
@@ -29,10 +31,10 @@
 
                 <div class="bootcamp-card-meta">
                   <span class="bootcamp-badge bootcamp-badge-price {% if bootcamp.is_free %}is-free{% endif %}">
-                    {% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|floatformat:0 }} تومان{% endif %}
+                    {% if bootcamp.is_free %}رایگان{% else %}{{ bootcamp.price|price_fa }} تومان{% endif %}
                   </span>
                   {% if bootcamp.start_date %}
-                    <span class="bootcamp-badge bootcamp-badge-date">شروع: {{ bootcamp.start_date }}</span>
+                    <span class="bootcamp-badge bootcamp-badge-date">شروع: {{ bootcamp.start_date|jformat:"%d %B %Y" }}</span>
                   {% endif %}
                   {% if not bootcamp.is_registration_open %}
                     <span class="bootcamp-badge bootcamp-badge-closed">ثبت‌نام بسته شده</span>

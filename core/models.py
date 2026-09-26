@@ -5,7 +5,42 @@ from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+import secrets
 
+class ReferralSource(models.Model):
+    """منبع معرفی — مثلاً «علی احمدی» یا «کمپین اینستاگرام»"""
+    name = models.CharField(max_length=100, verbose_name='نام')
+    code = models.CharField(
+        max_length=30, unique=True,
+        verbose_name='کد',
+        help_text='فقط حروف انگلیسی و عدد. مثلاً: ali یا insta-campaign'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+
+    class Meta:
+        verbose_name = 'منبع معرفی'
+        verbose_name_plural = 'منابع معرفی'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    @property
+    def register_link(self):
+        return f"/register/?ref={self.code}"
+
+    def bootcamp_link(self, slug):
+        """لینک اختصاصی برای یه دوره — کاربر تصمیم می‌گیره."""
+        return f"/bootcamps/{slug}/?ref={self.code}"
+
+    @property
+    def students_count(self):
+        return self.students.count()
+
+    @property
+    def enrollments_count(self):
+        return self.enrollments.count()
+    
 class VideoLink(models.Model):
     session_id = models.IntegerField(unique=True)
     video_url = models.URLField(blank=True, null=True)
@@ -67,6 +102,13 @@ class Bootcamp(models.Model):
         verbose_name='هزینه صدور مدرک (تومان)',
         help_text='صفر یعنی مدرک رایگان. اگه پر باشه، کاربر می‌تونه بعداً مدرک بخره.'
     )
+    
+    certificate_template = models.ImageField(
+        upload_to='certificate_templates/',
+        blank=True, null=True,
+        verbose_name='تمپلیت مدرک',
+        help_text='اگه خالی بمونه، از تمپلیت پیش‌فرض استفاده می‌شه.'
+    )
 
     duration_weeks = models.PositiveSmallIntegerField(
         blank=True,
@@ -77,7 +119,7 @@ class Bootcamp(models.Model):
     sessions_count = models.PositiveSmallIntegerField(
         blank=True,
         null=True,
-        verbose_name='تعداد جلسات در هفته'
+        verbose_name='تعداد جلسات'
     )
 
     start_date = models.DateField(
@@ -174,6 +216,13 @@ class Student(models.Model):
     age = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(99)],
         verbose_name='سن',
+    )
+    
+    referred_by = models.ForeignKey(
+        ReferralSource, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='students',
+        verbose_name='معرف'
     )
     
     is_certified = models.BooleanField(default=False)
@@ -355,6 +404,29 @@ class Enrollment(models.Model):
     certificate_issued_at = models.DateTimeField(
         blank=True, null=True, verbose_name='تاریخ صدور'
     )
+    referral_source = models.ForeignKey(
+        ReferralSource, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='enrollments',
+        verbose_name='منبع معرفی'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='ثبت‌نام فعال',
+        help_text='برای دوره‌های پولی تا تأیید پرداخت False می‌مونه.'
+    )
+    registration_tracking_code = models.CharField(
+        max_length=50, blank=True, null=True,
+        verbose_name='کد پیگیری پرداخت ثبت‌نام'
+    )
+    registration_paid_at = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='تاریخ تأیید پرداخت ثبت‌نام'
+    )
+    registration_payment_submitted = models.BooleanField(
+        default=False,
+        verbose_name='کد پیگیری پرداخت ارسال شد'
+    )
     class Meta:
         verbose_name = 'ثبت‌نام'
         verbose_name_plural = 'ثبت‌نام‌ها'
@@ -384,7 +456,7 @@ def enroll_student(student, bootcamp, *, with_certificate=False, silent=False):
         if silent:
             return None
         raise ValidationError('شما قبلاً در این دوره ثبت‌نام کرده‌اید.')
-
+    
     if not bootcamp.can_register:
         if silent:
             return None

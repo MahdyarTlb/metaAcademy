@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}{{ bootcamp.title }} | متا آکادمی{% endblock %}
+{% block title %}{{ bootcamp.title }} | پارس ایکس{% endblock %}
 
 {% block content %}
+  {% if not enrollment.is_active %}
+    <div class="panel-warning">
+      ⏳ ثبت‌نام شما در انتظار تأیید پرداخت است.
+      {% if enrollment.registration_tracking_code %}
+        کد پیگیری: <strong dir="ltr">{{ enrollment.registration_tracking_code }}</strong>
+      {% endif %}
+    </div>
+  {% endif %}
 <section class="bp-section">
   <div class="container">
 
