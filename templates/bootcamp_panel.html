@@ -118,7 +118,7 @@
         <h3 class="bp-card-title">🎓 مدرک دوره</h3>
         {% if enrollment.is_certified %}
           {# حالت ۱: مدرک صادر شده #}
-          <a href="{{ enrollment.certificate_file.url }}" target="_blank"
+          <a href="{% url 'core:certificate' slug=bootcamp.slug %}" target="_blank"
             class="btn btn-primary">
             📜 دریافت مدرک
           </a>

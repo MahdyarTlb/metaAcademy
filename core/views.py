@@ -8,17 +8,18 @@ from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect, render, get_object_or_404
 from .models import Student, VideoLink, Signature, Bootcamp, Enrollment, Session, PaymentRequest, ReferralSource, enroll_student
 from .utils import preview_signature_on_template, generate_certificate_for_student
-from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm, PaymentForm
+from .forms import StudentForm, ExcelUploadForm, CheckForm, SetPasswordForm, LoginPasswordForm, CertificateForm, PaymentForm, StudentProfileForm
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.http import HttpResponse, Http404, request
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from urllib.parse import urlencode
+from django.db.models import Count, Q, Prefetch
 
 def csrf_failure(request, reason=""):
     print("\n========== CSRF FAILURE ==========")
@@ -208,26 +209,81 @@ class StudentsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Student
     template_name = 'students.html'
     context_object_name = 'students'
-    ordering = ['-created_at']
-    
+    paginate_by = 50
+
     def handle_no_permission(self):
         messages.error(self.request, 'شما دسترسی به این صفحه ندارید!')
         return redirect('core:home')
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['total_count'] = Student.objects.count()
-        context['certificate_count'] = Student.objects.filter(national_code__isnull=False).count()
-        context['title'] = 'لیست دانش‌آموزان'
-        return context
-    
+
     def test_func(self):
         return self.request.user.is_staff
-    
+
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
- 
+        qs = (
+            Student.objects
+            .prefetch_related(
+                Prefetch(
+                    'enrollments',
+                    queryset=Enrollment.objects
+                        .select_related('bootcamp')
+                        .order_by('-created_at'),
+                )
+            )
+            .annotate(
+                enrollments_total=Count('enrollments', distinct=True),
+                certified_total=Count(
+                    'enrollments',
+                    filter=Q(enrollments__is_certified=True),
+                    distinct=True,
+                ),
+            )
+            .order_by('-created_at')
+        )
+
+        # ─── فیلتر بر اساس دوره ───
+        bootcamp_slug = self.request.GET.get('bootcamp')
+        if bootcamp_slug:
+            qs = qs.filter(enrollments__bootcamp__slug=bootcamp_slug)
+
+        # ─── جستجو ───
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                Q(name__icontains=q) |
+                Q(phone_number__icontains=q) |
+                Q(national_code__icontains=q) |
+                Q(email__icontains=q) |
+                Q(city__icontains=q) |
+                Q(school__icontains=q)
+            )
+
+        # ─── فیلتر با/بدون مدرک ───
+        cert_filter = self.request.GET.get('cert')
+        if cert_filter == 'yes':
+            qs = qs.filter(enrollments__is_certified=True).distinct()
+        elif cert_filter == 'no':
+            qs = qs.exclude(enrollments__is_certified=True).distinct()
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        qs = self.get_queryset()
+
+        # آمار کلی (روی همه‌ی دیتابیس، نه فقط فیلترشده)
+        context['total_count'] = qs.count()
+        context['certificate_count'] = Enrollment.objects.filter(is_certified=True).count()
+        context['enrollment_count'] = Enrollment.objects.count()
+        context['bootcamps_all'] = Bootcamp.objects.filter(is_active=True).order_by('order', 'title')
+        context['title'] = 'لیست دانش‌آموزان'
+
+        # فیلترهای فعلی برای حفظ در pagination و UI
+        context['current_bootcamp'] = self.request.GET.get('bootcamp', '')
+        context['current_q'] = self.request.GET.get('q', '')
+        context['current_cert'] = self.request.GET.get('cert', '')
+
+        return context
+    
 # ==========================================================================
 # پنل کاربری با ورود واقعی (شماره/ایمیل + رمز عبور)
 # ==========================================================================
@@ -251,9 +307,7 @@ class CheckView(View):
                 next_url = request.session.pop('next_url', None)
                 if next_url:
                     return redirect(next_url)
-                return render(request, self.template_name, {
-                    'found': True, 'student': student, 'logged_in': True,
-                })
+                return redirect('core:dashboard')
             request.session.pop('auth_student_id', None)
 
         form = CheckForm()
@@ -307,7 +361,7 @@ class EnrollView(View):
     
     def _attach_referral(self, request, enrollment, student):
         """منبع معرفی رو روی Enrollment و (اگه لازم بود) روی Student ست می‌کنه."""
-        ref_code = request.session.pop('ref_code')
+        ref_code = request.session.pop('ref_code', None)
         if not ref_code:
             return
         
@@ -417,7 +471,7 @@ class SetPasswordView(PendingStudentMixin, View):
  
             messages.success(request, '✅ رمز عبور شما با موفقیت تنظیم شد و وارد پنل شدید.')
             next_url = request.session.pop('next_url', None)
-            return redirect(next_url or 'core:check_view')
+            return redirect(next_url or 'core:dashboard')
  
         return render(request, self.template_name, {'form': form, 'mode': 'set', 'student': student})
     
@@ -441,7 +495,10 @@ class LoginPasswordView(PendingStudentMixin, View):
         if not student:
             messages.warning(request, 'ابتدا شماره موبایل یا ایمیل خود را در پنل کاربری وارد کنید.')
             return redirect('core:check_view')
- 
+        
+        if not student.password:
+            return redirect('core:set_password')
+
         form = LoginPasswordForm(request.POST)
         if form.is_valid():
             entered_password = form.cleaned_data['password']
@@ -449,7 +506,7 @@ class LoginPasswordView(PendingStudentMixin, View):
                 request.session.pop('pending_student_id', None)
                 request.session['auth_student_id'] = student.pk
                 next_url = request.session.pop('next_url', None)
-                return redirect(next_url or 'core:check_view')
+                return redirect(next_url or 'core:dashboard')
             form.add_error('password', 'رمز عبور اشتباه است.')
  
         return render(request, self.template_name, {'form': form, 'mode': 'login', 'student': student})
@@ -502,16 +559,6 @@ class SuccessView(TemplateView):
         request.session.pop('enrolled_bootcamp', None)
 
         return context
-    
-class StudentSessionRequiredMixin:
-    def dispatch(self, request, *args, **kwargs):
-        if not request.session.get('auth_student_id'):
-            messages.warning(
-                request,
-                'برای دسترسی به این صفحه ابتدا وارد پنل کاربری خود شوید.'
-            )
-            return redirect('core:check_view')
-        return super().dispatch(request, *args, **kwargs)
  
 
 class StudentSessionRequiredMixin:
@@ -897,7 +944,41 @@ class CertificatePaymentView(EnrolledStudentRequiredMixin, View):
             '✅ درخواست پرداخت شما ثبت شد. پس از تأیید توسط پشتیبانی، مدرک صادر میشود.'
         )
         return redirect('core:certificate', slug=slug)
-    
+
+class ProfileEditView(StudentSessionRequiredMixin, View):
+    template_name = 'profile_edit.html'
+
+    def get(self, request):
+        form = StudentProfileForm(instance=request.student)
+        return render(request, self.template_name, {
+            'form': form,
+            'student': request.student,
+            'title': 'ویرایش پروفایل',
+        })
+
+    def post(self, request):
+        form = StudentProfileForm(request.POST, instance=request.student)
+        if form.is_valid():
+            form.save()
+            # آپدیت سشن‌ها برای هماهنگی
+            request.session['student_name'] = request.student.name
+            request.session['student_age'] = request.student.age
+            request.session['student_email'] = request.student.email or ''
+            request.session['student_reshte'] = request.student.reshte
+            request.session['student_school'] = request.student.school
+            request.session['student_city'] = request.student.city
+            request.session['student_moaref'] = request.student.moaref or ''
+
+            messages.success(request, '✅ اطلاعات پروفایل با موفقیت به‌روزرسانی شد.')
+            return redirect('core:dashboard')
+
+        messages.error(request, 'لطفاً خطاهای فرم را برطرف کنید.')
+        return render(request, self.template_name, {
+            'form': form,
+            'student': request.student,
+            'title': 'ویرایش پروفایل',
+        })
+        
 @login_required(login_url="/admins/admin")
 def admin_dashboard(request):
     # ========== آمار ==========
@@ -980,245 +1061,351 @@ def payment_request_view(request):
     
 @staff_member_required
 def export_excel(request):
-    """
-    خروجی اکسل از تمام دانش‌آموزان (همه فیلدها به صورت متن)
-    """
-    students = Student.objects.all().order_by('-created_at')
-    
-    wb = openpyxl.Workbook()
+    """خروجی اکسل از همه‌ی ثبت‌نام‌ها (per Enrollment)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    enrollments = (
+        Enrollment.objects
+        .select_related('student', 'bootcamp', 'student__referred_by')
+        .order_by('-created_at')
+    )
+
+    wb = Workbook()
     ws = wb.active
-    ws.title = 'دانش‌آموزان'
-    
+    ws.title = 'ثبت‌نام‌ها'
+
     # استایل‌ها
     header_font = Font(name='Bidad', size=12, bold=True, color='FFFFFF')
     header_fill = PatternFill(start_color='4CAF50', end_color='4CAF50', fill_type='solid')
-    header_alignment = Alignment(horizontal='center', vertical='center')
-    
+    header_align = Alignment(horizontal='center', vertical='center')
     cell_font = Font(name='Bidad', size=11)
-    cell_alignment = Alignment(horizontal='center', vertical='center')
-    
+    cell_align = Alignment(horizontal='center', vertical='center')
     border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin'),
     )
-    
-    # هدرها
-    headers = ['ردیف', 'نام و نام خانوادگی', 'سن', 'شماره تلفن', 'کدملی', 'is_certified', 'رشته تحصیلی', 'مدرسه', 'شهر', 'معرف', 'تاریخ ثبت']
-    
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
+
+    headers = [
+        'ردیف', 'نام و نام خانوادگی', 'سن', 'شماره تلفن', 'کدملی', 'ایمیل',
+        'دوره', 'با مدرک', 'مدرک صادر شده',
+        'رشته تحصیلی', 'مدرسه', 'شهر', 'معرف', 'کد معرف', 'تاریخ ثبت',
+    ]
+
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=c, value=h)
         cell.font = header_font
         cell.fill = header_fill
-        cell.alignment = header_alignment
+        cell.alignment = header_align
         cell.border = border
-    
-    # داده‌ها (همه به صورت مستقیم)
-    for row, student in enumerate(students, 2):
-        ws.cell(row=row, column=1, value=row-1).border = border
-        ws.cell(row=row, column=2, value=student.name).border = border
-        ws.cell(row=row, column=3, value=student.age).border = border
-        ws.cell(row=row, column=4, value=student.phone_number).border = border
-        ws.cell(row=row, column=5, value=student.national_code).border = border
-        ws.cell(row=row, column=6, value=student.is_certified).border = border
-        ws.cell(row=row, column=7, value=student.reshte).border = border
-        ws.cell(row=row, column=8, value=student.school).border = border
-        ws.cell(row=row, column=9, value=student.city).border = border
-        ws.cell(row=row, column=10, value=student.moaref or '').border = border
-        created_at_local = timezone.localtime(student.created_at)
-        ws.cell(row=row, column=11, value=created_at_local.strftime('%Y/%m/%d %H:%M')).border = border
-        
-        for col in range(1, 12):
-            ws.cell(row=row, column=col).font = cell_font
-            ws.cell(row=row, column=col).alignment = cell_alignment
-    
+
+    for row, e in enumerate(enrollments, 2):
+        s = e.student
+        ref_code = s.referred_by.code if s.referred_by else ''
+        created_local = timezone.localtime(e.created_at)
+
+        values = [
+            row - 1,
+            s.name,
+            s.age,
+            s.phone_number,
+            s.national_code or '',
+            s.email or '',
+            e.bootcamp.slug,
+            'بله' if e.with_certificate else 'خیر',
+            'بله' if e.is_certified else 'خیر',
+            s.reshte,
+            s.school,
+            s.city,
+            s.moaref or '',
+            ref_code,
+            created_local.strftime('%Y/%m/%d %H:%M'),
+        ]
+
+        for c, val in enumerate(values, 1):
+            cell = ws.cell(row=row, column=c, value=val)
+            cell.font = cell_font
+            cell.alignment = cell_align
+            cell.border = border
+
     # عرض ستون‌ها
-    column_widths = {
-        'A': 8, 'B': 25, 'C': 10, 'D': 18, 
-        'E': 18, 'F':15, 'G': 25, 'H': 25, 'I': 15, 'J': 20, 'K': 20
+    widths = {
+        'A': 8, 'B': 25, 'C': 8, 'D': 16, 'E': 14, 'F': 22,
+        'G': 18, 'H': 10, 'I': 14, 'J': 22, 'K': 22,
+        'L': 14, 'M': 18, 'N': 14, 'O': 20,
     }
-    for col, width in column_widths.items():
-        ws.column_dimensions[col].width = width
-    
+    for c, w in widths.items():
+        ws.column_dimensions[c].width = w
     ws.row_dimensions[1].height = 30
-    for row in range(2, len(students) + 2):
-        ws.row_dimensions[row].height = 25
-    
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename=students_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
-    
+    response['Content-Disposition'] = (
+        f'attachment; filename=enrollments_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    )
     wb.save(response)
     return response
 
 @staff_member_required
 def import_excel(request):
-    if request.method == 'POST':
-        form = ExcelUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            excel_file = request.FILES['excel_file']
-            
-            if not excel_file.name.endswith(('.xlsx', '.xls')):
-                messages.error(request, '❌ فرمت فایل باید .xlsx یا .xls باشد!')
+    if request.method != 'POST':
+        return render(request, 'import_excel.html', {'form': ExcelUploadForm()})
+
+    form = ExcelUploadForm(request.POST, request.FILES)
+    if not form.is_valid():
+        messages.error(request, '❌ فرمت فایل صحیح نیست!')
+        return render(request, 'import_excel.html', {'form': form})
+
+    excel_file = request.FILES['excel_file']
+    if not excel_file.name.endswith(('.xlsx', '.xls')):
+        messages.error(request, '❌ فرمت فایل باید .xlsx یا .xls باشد!')
+        return redirect('core:import_excel')
+
+    try:
+        wb = openpyxl.load_workbook(excel_file, data_only=True)
+        ws = wb.active
+
+        # ─── تشخیص هدرها ───
+        headers = [str(cell.value).strip() if cell.value else '' for cell in ws[1]]
+
+        col = {}
+        for idx, h in enumerate(headers):
+            if 'نام' in h and 'نام' not in col:
+                col['name'] = idx
+            elif h == 'سن' or 'سن' in h:
+                col['age'] = idx
+            elif 'تلفن' in h or 'شماره' in h and 'شماره' not in col.get('phone_used', ''):
+                col.setdefault('phone', idx)
+            elif 'کدملی' in h or 'کد ملی' in h:
+                col['national_code'] = idx
+            elif 'is_certified' in h or 'مدرک' in h and 'certified' not in col.get('cert_used', ''):
+                col.setdefault('is_certified', idx)
+            elif 'رشته' in h:
+                col['reshte'] = idx
+            elif 'مدرسه' in h or 'دانشگاه' in h:
+                col['school'] = idx
+            elif 'شهر' in h:
+                col['city'] = idx
+            elif 'معرف' in h and 'کد' not in h:
+                col['moaref'] = idx
+            elif 'تاریخ' in h or 'ثبت' in h:
+                col['created_at'] = idx
+            elif 'دوره' in h or 'bootcamp' in h.lower():
+                col['bootcamp'] = idx
+            elif 'با مدرک' in h:
+                col['with_certificate'] = idx
+            elif 'کد معرف' in h or 'referral' in h.lower():
+                col['referral_code'] = idx
+
+        # ─── چک ستون‌های ضروری ───
+        required = ['name', 'phone']
+        for f in required:
+            if f not in col:
+                messages.error(request, f'❌ ستون "{f}" در فایل پیدا نشد!')
                 return redirect('core:import_excel')
-            
-            try:
-                wb = openpyxl.load_workbook(excel_file)
-                ws = wb.active
-                
-                # خواندن هدرها (ردیف اول)
-                headers = [cell.value for cell in ws[1]]
-                
-                # پیدا کردن اندیس ستون‌ها
-                col_index = {}
-                for idx, header in enumerate(headers):
-                    if header:
-                        header_str = str(header).strip()
-                        if 'نام' in header_str:
-                            col_index['name'] = idx
-                        elif 'سن' in header_str:
-                            col_index['age'] = idx
-                        elif 'تلفن' in header_str or 'شماره' in header_str:
-                            col_index['phone'] = idx
-                        elif 'کدملی' in header_str:
-                            col_index['national_code'] = idx
-                        elif 'is_certified' in header_str:
-                            col_index['is_certified'] = idx
-                        elif 'رشته' in header_str:
-                            col_index['reshte'] = idx
-                        elif 'مدرسه' in header_str:
-                            col_index['school'] = idx
-                        elif 'شهر' in header_str:
-                            col_index['city'] = idx
-                        elif 'معرف' in header_str:
-                            col_index['moaref'] = idx
-                        elif 'تاریخ' in header_str or 'ثبت' in header_str:
-                            col_index['created_at'] = idx
-                
-                # بررسی وجود ستون‌های ضروری
-                required = ['name', 'age', 'phone', 'national_code', 'is_certified', 'reshte', 'school', 'city']
-                for field in required:
-                    if field not in col_index:
-                        messages.error(request, f'❌ ستون "{field}" در فایل پیدا نشد!')
-                        return redirect('core:import_excel')
-                
-                added_count = 0
-                error_rows = []
-                
-                # خواندن داده‌ها از ردیف دوم به بعد
-                for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                    if not row or not any(row):
+
+        # ─── تشخیص حالت: قدیمی یا جدید؟ ───
+        is_legacy = 'bootcamp' not in col
+        default_bootcamp_slug = 'python-basic'
+
+        if is_legacy:
+            default_bootcamp = Bootcamp.objects.filter(slug=default_bootcamp_slug).first()
+            if not default_bootcamp:
+                messages.error(
+                    request,
+                    f'❌ بوت‌کمپ "{default_bootcamp_slug}" پیدا نشد. '
+                    f'اول اون رو بساز، بعد اکسل رو آپلود کن.'
+                )
+                return redirect('core:import_excel')
+            messages.info(
+                request,
+                f'📋 فایل قدیمی تشخیص داده شد — همه‌ی کاربران به «{default_bootcamp.title}» منتقل می‌شن.'
+            )
+
+        added_students = 0
+        updated_students = 0
+        added_enrollments = 0
+        errors = []
+
+        def cell_value(row, key):
+            if key not in col:
+                return None
+            idx = col[key]
+            val = row[idx] if idx < len(row) else None
+            if val is None:
+                return None
+            return str(val).strip() if isinstance(val, str) else val
+
+        with transaction.atomic():
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if not row or not any(row):
+                    continue
+
+                try:
+                    # ─── اطلاعات پایه ───
+                    name = cell_value(row, 'name') or ''
+                    phone = cell_value(row, 'phone') or ''
+                    phone = str(phone).strip()
+
+                    if not name:
+                        errors.append(f'ردیف {row_idx}: نام خالی')
                         continue
-                    
+
+                    # ─── استانداردسازی شماره ───
+                    if phone and not phone.startswith('0') and len(phone) == 10:
+                        phone = '0' + phone
+                    if not phone.startswith('09') or len(phone) != 11:
+                        errors.append(f'ردیف {row_idx}: شماره {phone} نامعتبر')
+                        continue
+
+                    # ─── سن ───
+                    age_raw = cell_value(row, 'age')
                     try:
-                        name = str(row[col_index['name']]).strip() if row[col_index['name']] else ''
-                        age = int(row[col_index['age']]) if row[col_index['age']] else None
-                        phone_number = str(row[col_index['phone']]).strip() if row[col_index['phone']] else ''
-                        national_code = str(row[col_index['national_code']]).strip() if row[col_index['national_code']] else None
-                        is_certified = bool(row[col_index['is_certified']])
-                        reshte = str(row[col_index['reshte']]).strip() if row[col_index['reshte']] else ''
-                        school = str(row[col_index['school']]).strip() if row[col_index['school']] else ''
-                        city = str(row[col_index['city']]).strip() if row[col_index['city']] else ''
-                        moaref = str(row[col_index.get('moaref')]).strip() if col_index.get('moaref') and row[col_index['moaref']] else None
-                        created_at_str = str(row[col_index.get('created_at')]).strip() if col_index.get('created_at') and row[col_index['created_at']] else None
-                        
-                        # اعتبارسنجی
-                        if not name:
-                            error_rows.append(f'ردیف {row_idx}: نام نمی‌تواند خالی باشد')
-                            continue
-                        if age is None:
+                        age = int(age_raw) if age_raw else 1
+                        if not 1 <= age <= 120:
                             age = 1
-                        else:
-                            try:
-                                age = int(age)
-                                if age < 1 or age > 120:
-                                    error_rows.append(f'ردیف {row_idx}: سن باید بین 1 تا 120 باشد')
-                                    continue
-                            except (ValueError, TypeError):
-                                error_rows.append(f'ردیف {row_idx}: سن باید عدد باشد')
-                                continue
-                        # شماره تلفن - تبدیل به رشته و استانداردسازی
-                        phone_number = str(phone_number).strip() if phone_number else ''
-                        # اگر با 0 شروع نمی‌شه و 10 رقمه، 0 رو اولش بذار
-                        if phone_number and not phone_number.startswith('0') and len(phone_number) == 10:
-                            phone_number = '0' + phone_number
-                        if not phone_number or not phone_number.startswith('09') or len(phone_number) != 11:
-                            error_rows.append(f'ردیف {row_idx}: شماره تلفن باید با 09 شروع شود و 11 رقم باشد')
-                            continue
-                        if not reshte:
-                            reshte = 'ثبت نشده'
-                        if not school:
-                            school = 'ثبت نشده'
-                        if not city:
-                            city = 'ثبت نشده'
-                        if is_certified == 'False':
-                            is_certified = False
-                        elif is_certified == 'True':
-                            is_certified = True
-                        
-                        # ایجاد شیء دانش‌آموز
-                        student = Student(
-                            name=name,
-                            age=age,
-                            phone_number=phone_number,
-                            national_code=national_code,
-                            is_certified=is_certified,
-                            reshte=reshte,
-                            school=school,
-                            city=city,
-                            moaref=moaref if moaref else None
-                        )
+                    except (ValueError, TypeError):
+                        age = 1
+
+                    national_code = cell_value(row, 'national_code')
+                    reshte = cell_value(row, 'reshte') or 'ثبت نشده'
+                    school = cell_value(row, 'school') or 'ثبت نشده'
+                    city = cell_value(row, 'city') or 'ثبت نشده'
+                    moaref = cell_value(row, 'moaref') or None
+                    created_str = cell_value(row, 'created_at')
+
+                    # ─── ساخت/آپدیت دانشجو ───
+                    student, created = Student.objects.get_or_create(
+                        phone_number=phone,
+                        defaults={
+                            'name': name,
+                            'age': age,
+                            'national_code': national_code,
+                            'reshte': reshte,
+                            'school': school,
+                            'city': city,
+                            'moaref': moaref,
+                        }
+                    )
+
+                    if created:
+                        added_students += 1
+                    else:
+                        # اگه دانشجو وجود داشت، فیلدهای خالی رو پر کن (بدون override)
+                        changed = []
+                        for field, val in [
+                            ('name', name), ('age', age),
+                            ('national_code', national_code),
+                            ('reshte', reshte), ('school', school),
+                            ('city', city), ('moaref', moaref),
+                        ]:
+                            if val and not getattr(student, field):
+                                setattr(student, field, val)
+                                changed.append(field)
+                        if changed:
+                            student.save(update_fields=changed)
+                            updated_students += 1
+
+                    # ─── تنظیم created_at اگه توی اکسل بود ───
+                    if created_str:
                         try:
-                            student.full_clean()
-                        except ValidationError as e:
-                            error_rows.append(f'ردیف {row_idx}: خطای اعتبارسنجی - {", ".join(e.messages)}')
+                            dt = datetime.strptime(str(created_str), '%Y/%m/%d %H:%M')
+                            if timezone.is_naive(dt):
+                                dt = timezone.make_aware(dt)
+                            Student.objects.filter(pk=student.pk).update(created_at=dt)
+                            student.created_at = dt
+                        except ValueError:
+                            errors.append(f'ردیف {row_idx}: تاریخ نامعتبر — {created_str}')
+
+                    # ─── منبع معرفی (اگه جدید بود) ───
+                    referral_code = cell_value(row, 'referral_code')
+                    if referral_code:
+                        source = ReferralSource.objects.filter(code=str(referral_code).strip()).first()
+                        if source and not student.referred_by:
+                            student.referred_by = source
+                            student.save(update_fields=['referred_by'])
+
+                    # ─── پیدا کردن بوت‌کمپ ───
+                    if is_legacy:
+                        bootcamp = default_bootcamp
+                    else:
+                        slug = cell_value(row, 'bootcamp')
+                        if not slug:
+                            errors.append(f'ردیف {row_idx}: ستون دوره خالی')
+                            continue
+                        bootcamp = Bootcamp.objects.filter(slug=str(slug).strip()).first()
+                        if not bootcamp:
+                            errors.append(f'ردیف {row_idx}: بوت‌کمپ «{slug}» پیدا نشد')
                             continue
 
-                        student.save()
-                        
-                        # اگر تاریخ ثبت در فایل وجود دارد، آن را تنظیم کن
-                        if created_at_str:
-                            try:
-                                # تبدیل تاریخ از فرمت اکسل به datetime
-                                # فرمت: 2026/07/04 23:07
-                                created_at_dt = datetime.strptime(created_at_str, '%Y/%m/%d %H:%M')
-                                
-                                # اگر timezone فعال است، آن را aware کنید
-                                if timezone.is_naive(created_at_dt):
-                                    created_at_dt = timezone.make_aware(created_at_dt)
-                                
-                                # به‌روزرسانی فیلد created_at
-                                Student.objects.filter(pk=student.pk).update(created_at=created_at_dt)
-                                
-                            except ValueError as e:
-                                error_rows.append(f'ردیف {row_idx}: فرمت تاریخ صحیح نیست (مثال: 2026/07/04 23:07) - {str(e)}')
-                        
-                        added_count += 1
-                        
-                    except IntegrityError:
-                        error_rows.append(f'ردیف {row_idx}: شماره تلفن {phone_number} تکراری است')
-                    except Exception as e:
-                        error_rows.append(f'ردیف {row_idx}: خطا - {str(e)}')
-                
-                # نمایش نتیجه
-                if added_count > 0:
-                    messages.success(request, f'✅ {added_count} دانش‌آموز با موفقیت اضافه شدند!')
-                if error_rows:
-                    for error in error_rows[:5]:
-                        messages.warning(request, f'⚠️ {error}')
-                    if len(error_rows) > 5:
-                        messages.info(request, f'و {len(error_rows) - 5} خطای دیگر وجود دارد.')
-                
-                return redirect('core:students')
-                
-            except Exception as e:
-                messages.error(request, f'❌ خطا در خواندن فایل: {str(e)}')
-                return redirect('core:import_excel')
-        else:
-            messages.error(request, '❌ فرمت فایل صحیح نیست!')
-    else:
-        form = ExcelUploadForm()
-    
-    return render(request, 'import_excel.html', {'form': form})
+                    # ─── با مدرک؟ ───
+                    if 'with_certificate' in col:
+                        with_cert_raw = cell_value(row, 'with_certificate')
+                        with_cert = str(with_cert_raw).lower() in ('true', '1', 'بله', 'بلی', 'yes')
+                    else:
+                        # قدیمی: اگه is_certified داشت، پس با مدرک بوده
+                        cert_raw = cell_value(row, 'is_certified')
+                        with_cert = str(cert_raw).lower() in ('true', '1', 'بله', 'بلی', 'yes')
+
+                    # ─── is_certified ───
+                    cert_raw = cell_value(row, 'is_certified')
+                    is_cert = str(cert_raw).lower() in ('true', '1', 'بله', 'بلی', 'yes')
+
+                    # ─── ساخت/آپدیت Enrollment ───
+                    enrollment, e_created = Enrollment.objects.get_or_create(
+                        student=student,
+                        bootcamp=bootcamp,
+                        defaults={
+                            'with_certificate': with_cert or is_cert,
+                            'is_active': True,
+                            'is_certified': is_cert,
+                            'registration_payment_submitted': True,
+                            'registration_paid_at': student.created_at,
+                            'certificate_issued_at': student.created_at if is_cert else None,
+                        }
+                    )
+
+                    if e_created:
+                        added_enrollments += 1
+                    else:
+                        # آپدیت اگه لازم بود
+                        changed = []
+                        if is_cert and not enrollment.is_certified:
+                            enrollment.is_certified = True
+                            enrollment.certificate_issued_at = student.created_at
+                            changed.extend(['is_certified', 'certificate_issued_at'])
+                        if with_cert and not enrollment.with_certificate:
+                            enrollment.with_certificate = True
+                            changed.append('with_certificate')
+                        if not enrollment.is_active:
+                            enrollment.is_active = True
+                            changed.append('is_active')
+                        if changed:
+                            enrollment.save(update_fields=changed)
+
+                except Exception as e:
+                    errors.append(f'ردیف {row_idx}: {e}')
+
+        # ─── گزارش ───
+        summary = []
+        if added_students:
+            summary.append(f'👤 {added_students} دانشجوی جدید')
+        if updated_students:
+            summary.append(f'✏️ {updated_students} دانشجوی به‌روزشده')
+        if added_enrollments:
+            summary.append(f'📚 {added_enrollments} ثبت‌نام جدید')
+
+        if summary:
+            messages.success(request, '✅ ' + ' — '.join(summary))
+
+        for err in errors[:8]:
+            messages.warning(request, f'⚠️ {err}')
+        if len(errors) > 8:
+            messages.info(request, f'و {len(errors) - 8} خطای دیگر.')
+
+        return redirect('core:students')
+
+    except Exception as e:
+        messages.error(request, f'❌ خطا در خواندن فایل: {e}')
+        return redirect('core:import_excel')

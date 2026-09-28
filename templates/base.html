@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}پارس ایکس — بوت‌کمپ تابستانه پایتون{% endblock %}</title>
   <link rel="icon" type="image/x-icon" href="{% static 'img/icon.ico' %}">
-  <meta name="description" content="بوت‌کمپ تابستانه پایتون؛ ۶ هفته آموزش عملی و پروژه‌محور برای دانش‌آموزان.">
+  <meta name="description" content="اولین سیستم آموزش با هوش مصنوعی + گیمیفیکیشن در ایران">
 
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   {% block extra_head %}{% endblock %}
@@ -23,18 +23,18 @@
       <nav class="main-nav" id="mainNav">
         <a href="{% url 'core:home' %}" class="nav-link{% if request.resolver_match.url_name == 'home' %} is-active{% endif %}">خانه</a>
         <a href="{% url 'core:bootcamp_list' %}" class="nav-link{% if request.resolver_match.url_name == 'bootcamp_list' or request.resolver_match.url_name == 'bootcamp_detail' %} is-active{% endif %}">دوره‌ها</a>
-        <a href="{% url 'core:dashboard' %}" class="nav-link{% if request.resolver_match.url_name == 'check' %} is-active{% endif %}">پنل کاربری</a>
+        <a href="{% url 'core:dashboard' %}" class="nav-link{% if request.resolver_match.url_name == 'check_view' %} is-active{% endif %}">پنل کاربری</a>
       </nav>
-      {% if not logged_in %}      
+      {% if request.session.auth_student_id %}      
         <div class="header-actions">
-          <a href="{% url 'core:dashboard' %}" class="btn btn-primary btn-small header-cta">پنل کاربری</a>
+          <a href="{% url 'core:check_logout' %}" class="btn btn-primary btn-small header-cta">خروج</a>
           <button class="nav-toggle" id="navToggle" aria-label="باز کردن منو" aria-expanded="false">
             <span></span><span></span><span></span>
           </button>
         </div>
       {% else %}
         <div class="header-actions">
-          <a href="{% url 'core:check_logout' %}" class="btn btn-primary btn-small header-cta">خروج</a>
+          <a href="{% url 'core:dashboard' %}" class="btn btn-primary btn-small header-cta">پنل کاربری</a>
           <button class="nav-toggle" id="navToggle" aria-label="باز کردن منو" aria-expanded="false">
             <span></span><span></span><span></span>
           </button>
@@ -80,7 +80,7 @@
         <a href="{% url 'core:dashboard' %}">پنل کاربری</a>
       </div>
 
-      <p class="footer-copy">© تابستان 1405 — پارس ایکس مستقر در خانه خلاق دانشگاه خوارزمی. تمام حقوق محفوظ است.</p>
+      <p class="footer-copy">© 1405 — پارس ایکس مستقر در خانه خلاق دانشگاه خوارزمی. تمام حقوق محفوظ است.</p>
     </div>
   </footer>
 

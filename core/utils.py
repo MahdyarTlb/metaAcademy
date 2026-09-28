@@ -179,7 +179,7 @@ def generate_certificate_for_student(enrollment, base_template_path=None):
     output.seek(0)
 
     filename = (
-        f"cert_{student.id}_{student.national_code}.jpg"
+        f"cert_{enrollment.bootcamp.slug}_{student.name}.jpg"
     )
 
     return ContentFile(

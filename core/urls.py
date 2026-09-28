@@ -26,6 +26,7 @@ urlpatterns = [
     path('panel/<slug:slug>/certificate/', views.CertificateView.as_view(), name='certificate'),
     path('panel/<slug:slug>/certificate/payment/', views.CertificatePaymentView.as_view(), name='certificate_payment'),
     path('panel/<slug:slug>/registration-payment/', views.RegistrationPaymentView.as_view(), name='registration_payment'),
+    path('panel/profile/edit/', views.ProfileEditView.as_view(), name='profile_edit'),
     
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('payment/', views.payment_request_view, name='payment'),

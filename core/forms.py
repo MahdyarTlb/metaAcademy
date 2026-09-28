@@ -188,3 +188,63 @@ class PaymentForm(forms.ModelForm):
         labels = {
             'tracking_code': 'کد پیگیری پرداخت'
         }
+
+class StudentProfileForm(forms.ModelForm):
+    """فرم ویرایش پروفایل — بدون شماره موبایل (آیدی یکتا) و رمز."""
+
+    class Meta:
+        model = Student
+        fields = [
+            'name', 'age', 'national_code', 'email',
+            'reshte', 'school', 'city', 'moaref',
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'profile-input', 'placeholder': 'نام و نام خانوادگی کامل'}),
+            'age': forms.NumberInput(attrs={'class': 'profile-input', 'min': 1, 'max': 99}),
+            'national_code': forms.TextInput(attrs={
+                'class': 'profile-input',
+                'placeholder': '۱۰ رقم — مثلاً 1234567890',
+                'dir': 'ltr',
+                'maxlength': 10,
+            }),
+            'email': forms.EmailInput(attrs={'class': 'profile-input', 'placeholder': 'email@example.com', 'dir': 'ltr'}),
+            'reshte': forms.TextInput(attrs={'class': 'profile-input', 'placeholder': 'رشته تحصیلی / پایه'}),
+            'school': forms.TextInput(attrs={'class': 'profile-input', 'placeholder': 'دانشگاه / مدرسه'}),
+            'city': forms.TextInput(attrs={'class': 'profile-input', 'placeholder': 'شهر'}),
+            'moaref': forms.TextInput(attrs={'class': 'profile-input', 'placeholder': 'چطور با ما آشنا شدی؟'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['national_code'].required = False
+        self.fields['email'].required = False
+        self.fields['moaref'].required = False
+
+    def clean_national_code(self):
+        code = self.cleaned_data.get('national_code', '').strip()
+        if not code:
+            return None
+        code = code.replace(' ', '').replace('-', '')
+        if not code.isdigit():
+            raise ValidationError('کد ملی باید فقط شامل اعداد باشد.')
+        if len(code) != 10:
+            raise ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد.')
+
+        # چک تکراری نبودن — خود دانشجو رو نادیده بگیر
+        qs = Student.objects.filter(national_code=code)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('این کد ملی قبلاً ثبت شده است.')
+        return code
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip()
+        if not email:
+            return None
+        qs = Student.objects.filter(email=email)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('این ایمیل قبلاً ثبت شده است.')
+        return email

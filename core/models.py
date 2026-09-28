@@ -172,11 +172,6 @@ class Bootcamp(models.Model):
     def get_absolute_url(self):
         return reverse('core:bootcamp_detail', kwargs={'slug': self.slug})
     
-    def save(self, *args, **kwargs):
-            if self.remaining_capacity is None:
-                self.remaining_capacity = self.capacity
-            super().save(*args, **kwargs)
-            
     @property
     def is_free(self):
         return self.price == 0
@@ -225,9 +220,6 @@ class Student(models.Model):
         verbose_name='معرف'
     )
     
-    is_certified = models.BooleanField(default=False)
-    certificate_file = models.ImageField(upload_to='certificates/', blank=True, null=True)
-        
     phone_number = models.CharField(
         max_length=11,
         validators=[

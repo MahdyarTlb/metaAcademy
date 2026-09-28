@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-
+{% load persian %}
 {% block title %}پرداخت هزینه مدرک | پارس ایکس{% endblock %}
 
 {% block content %}
@@ -28,7 +28,7 @@
 
       <div class="pay-amount">
         <span class="pay-amount-label">مبلغ قابل پرداخت</span>
-        <strong class="pay-amount-value">{{ fee|floatformat:0 }}<small> تومان</small></strong>
+        <strong class="pay-amount-value">{{ fee|price_fa }}<small> تومان</small></strong>
       </div>
 
       <div class="pay-bank-card">

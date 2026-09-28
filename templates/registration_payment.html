@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-
+{% load persian %}
 {% block title %}پرداخت هزینه بوتکمپ | پارس ایکس{% endblock %}
 
 {% block content %}
@@ -30,7 +30,7 @@
       {# مبلغ #}
       <div class="pay-amount">
         <span class="pay-amount-label">مبلغ قابل پرداخت</span>
-        <strong class="pay-amount-value">{{ price|floatformat:0 }}<small> تومان</small></strong>
+        <strong class="pay-amount-value">{{ price|price_fa }}<small> تومان</small></strong>
       </div>
 
       {# کارت بانکی #}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load persian %}
 
 {% block title %}مدرک {{ bootcamp.title }} | پارس ایکس{% endblock %}
 
@@ -112,7 +113,7 @@
             <div class="cert-payment">
               <div class="cert-payment-head">
                 <span>💳 هزینه‌ی صدور مدرک</span>
-                <strong>{{ fee|floatformat:0 }} تومان</strong>
+                <strong>{{ fee|price_fa }} تومان</strong>
               </div>
               <p class="cert-payment-hint">
                 مبلغ را به حساب اعلام‌شده واریز کنید و کد پیگیری را اینجا وارد نمایید.

@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% load static %}
+{% load jformat %}
+
+{% block title %}ویرایش پروفایل | Parse-X{% endblock %}
+
+{% block content %}
+<section class="profile-section">
+  <div class="profile-container">
+
+    <nav class="profile-breadcrumb">
+      <a href="{% url 'core:dashboard' %}">پنل کاربری</a>
+      <span>/</span>
+      <span class="profile-current">ویرایش پروفایل</span>
+    </nav>
+
+    <div class="profile-card">
+      <div class="profile-head">
+        <div class="profile-avatar">{{ student.name|first }}</div>
+        <div>
+          <h1 class="profile-title">ویرایش اطلاعات پروفایل</h1>
+          <p class="profile-lead">
+            اطلاعاتت رو به‌روز نگه دار تا مدرک و ارتباطت درست انجام بشه.
+          </p>
+        </div>
+      </div>
+
+      {# ─── شماره موبایل (غیرقابل ویرایش) ─── #}
+      <div class="profile-locked">
+        <div class="profile-locked-icon">🔒</div>
+        <div class="profile-locked-content">
+          <span class="profile-locked-label">شماره موبایل (شناسه‌ی یکتای حساب)</span>
+          <strong dir="ltr">{{ student.phone_number }}</strong>
+          <small>این شماره غیرقابل تغییر است. برای تغییر با پشتیبانی تماس بگیرید.</small>
+        </div>
+      </div>
+
+      {# ─── فرم ─── #}
+      <form method="post" class="profile-form">
+        {% csrf_token %}
+
+        <div class="profile-grid">
+          <div class="profile-field">
+            <label for="{{ form.name.id_for_label }}">
+              {{ form.name.label }} <span class="req">*</span>
+            </label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="profile-error">{{ form.name.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.age.id_for_label }}">
+              {{ form.age.label }} <span class="req">*</span>
+            </label>
+            {{ form.age }}
+            {% if form.age.errors %}<div class="profile-error">{{ form.age.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.national_code.id_for_label }}">کد ملی</label>
+            {{ form.national_code }}
+            {% if form.national_code.errors %}<div class="profile-error">{{ form.national_code.errors.0 }}</div>{% endif %}
+            <small class="profile-hint">برای صدور مدرک معتبر الزامی است.</small>
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.email.id_for_label }}">ایمیل</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="profile-error">{{ form.email.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.reshte.id_for_label }}">
+              {{ form.reshte.label }} <span class="req">*</span>
+            </label>
+            {{ form.reshte }}
+            {% if form.reshte.errors %}<div class="profile-error">{{ form.reshte.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.school.id_for_label }}">
+              {{ form.school.label }} <span class="req">*</span>
+            </label>
+            {{ form.school }}
+            {% if form.school.errors %}<div class="profile-error">{{ form.school.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.city.id_for_label }}">
+              {{ form.city.label }} <span class="req">*</span>
+            </label>
+            {{ form.city }}
+            {% if form.city.errors %}<div class="profile-error">{{ form.city.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="profile-field">
+            <label for="{{ form.moaref.id_for_label }}">نحوه‌ی آشنایی</label>
+            {{ form.moaref }}
+            {% if form.moaref.errors %}<div class="profile-error">{{ form.moaref.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button type="submit" class="btn btn-primary btn-large">
+            💾 ذخیره‌ی تغییرات
+          </button>
+          <a href="{% url 'core:dashboard' %}" class="btn btn-ghost btn-large">
+            انصراف
+          </a>
+        </div>
+      </form>
+
+      {# ─── بخش رمز عبور ─── #}
+      <div class="profile-password">
+        <div class="profile-password-icon">🔑</div>
+        <div class="profile-password-content">
+          <strong>تغییر رمز عبور</strong>
+          <p>
+            برای تغییر رمز عبور، با پشتیبانی در ارتباط باش:
+          </p>
+          <div class="profile-password-links">
+            <a href="https://t.me/metanix_admin1" target="_blank" class="profile-ch-link telegram">
+              <span>تلگرام</span>
+            </a>
+            <a href="https://ble.ir/metanix_ir" target="_blank" class="profile-ch-link bale">
+              <span>بله</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<style>
+  .profile-section {
+    padding: 40px 16px 64px;
+  }
+  .profile-container {
+    max-width: 780px;
+    margin-inline: auto;
+  }
+
+  .profile-breadcrumb {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .profile-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+  .profile-breadcrumb a:hover { color: var(--coral); }
+  .profile-breadcrumb span { margin: 0 8px; }
+  .profile-current { color: var(--text); font-weight: 700; }
+
+  .profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 20px 60px -30px rgba(0,0,0,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #f0db1e, var(--coral));
+    background-size: 200% 100%;
+    animation: profileShimmer 3s ease-in-out infinite;
+  }
+  @keyframes profileShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+
+  .profile-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 26px;
+  }
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #fff;
+    background: linear-gradient(135deg, var(--coral), #f0db1e);
+    box-shadow: 0 8px 24px -8px rgba(255,127,80,.5);
+    flex-shrink: 0;
+  }
+  .profile-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+    color: var(--text);
+  }
+  .profile-lead {
+    font-size: .9rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  /* ─── قفل شماره موبایل ─── */
+  .profile-locked {
+    display: flex;
+    gap: 14px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(107,114,128,.08), rgba(0,0,0,.02));
+    border: 1px dashed var(--border-soft);
+    border-radius: 14px;
+    margin-bottom: 28px;
+    align-items: flex-start;
+  }
+  .profile-locked-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .profile-locked-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .profile-locked-label {
+    font-size: .78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .profile-locked-content strong {
+    font-size: 1.05rem;
+    color: var(--text);
+    font-family: monospace;
+    letter-spacing: 1px;
+  }
+  .profile-locked-content small {
+    font-size: .78rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ─── فرم ─── */
+  .profile-form { text-align: right; }
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 620px) {
+    .profile-grid { grid-template-columns: 1fr; }
+  }
+
+  .profile-field {
+    display: flex;
+    flex-direction: column;
+  }
+  .profile-field label {
+    font-size: .85rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .req { color: #dc3545; }
+
+  .profile-input,
+  .profile-field input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border-soft);
+    border-radius: 12px;
+    font-size: .95rem;
+    color: var(--text);
+    font-family: inherit;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .profile-input:focus,
+  .profile-field input:focus {
+    outline: none;
+    border-color: var(--coral);
+    box-shadow: 0 0 0 4px rgba(255,127,80,.12);
+  }
+
+  .profile-hint {
+    font-size: .75rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .profile-error {
+    font-size: .8rem;
+    color: #dc3545;
+    margin-top: 6px;
+  }
+
+  .profile-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 20px;
+    border-top: 1px dashed var(--border-soft);
+  }
+  .profile-actions .btn { flex: 1; min-width: 160px; justify-content: center; }
+
+  /* ─── رمز عبور ─── */
+  .profile-password {
+    display: flex;
+    gap: 14px;
+    margin-top: 28px;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, rgba(59,130,246,.06), rgba(255,127,80,.04));
+    border: 1px solid rgba(59,130,246,.18);
+    border-radius: 16px;
+    align-items: flex-start;
+  }
+  .profile-password-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  .profile-password-content strong {
+    display: block;
+    font-size: .95rem;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .profile-password-content p {
+    font-size: .85rem;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    line-height: 1.7;
+  }
+  .profile-password-links {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .profile-ch-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: #fff;
+    transition: transform .2s ease;
+  }
+  .profile-ch-link:hover { transform: translateY(-2px); }
+  .profile-ch-link.telegram { background: #1a7686; }
+  .profile-ch-link.bale     { background: #00b894; }
+</style>
+{% endblock %}
