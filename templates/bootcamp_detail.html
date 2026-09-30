@@ -38,7 +38,18 @@
     <div class="container bootcamp-detail-grid">
       <div class="bootcamp-detail-main">
         <h2 class="section-title section-title-start">درباره‌ی دوره</h2>
-        <div class="bootcamp-detail-description">{{ bootcamp.description|linebreaks }}</div>
+
+        {# ─── توضیحات با افکت بازشو ─── #}
+        <div class="expandable is-collapsed" id="descBlock">
+          <div class="bootcamp-detail-description">{{ bootcamp.description|linebreaks }}</div>
+          <div class="expand-fade"></div>
+        </div>
+        <button type="button" class="expand-btn"
+                data-target="descBlock"
+                data-more="نمایش توضیحات بیشتر ↓"
+                data-less="بستن توضیحات ↑">
+          نمایش توضیحات بیشتر ↓
+        </button>
 
         {% if sessions %}
           <section class="syllabus-section">
@@ -47,7 +58,7 @@
               <p class="syllabus-subtitle">نگاهی به آنچه در این دوره یاد می‌گیرید</p>
             </div>
 
-            <ol class="syllabus-grid">
+            <ol class="syllabus-grid expandable is-collapsed" id="syllabusBlock">
               {% for session in sessions %}
                 <li class="syllabus-card">
                   <div class="syllabus-card-head">
@@ -77,8 +88,15 @@
                 </li>
               {% endfor %}
             </ol>
+            <div class="expand-fade expand-fade-grid"></div>
+            <button type="button" class="expand-btn"
+                    data-target="syllabusBlock"
+                    data-more="مشاهده‌ی همه‌ی جلسات ↓"
+                    data-less="بستن سرفصل‌ها ↑">
+              مشاهده‌ی همه‌ی جلسات ↓
+            </button>
           </section>
-      {% endif %}
+        {% endif %}
       </div>
 
       <aside class="bootcamp-detail-info">
@@ -500,5 +518,99 @@
     .syllabus-lock { width: 30px; height: 30px; }
     .syllabus-lock svg { width: 14px; height: 14px; }
   }
+  /* ─── افکت بازشو ─── */
+    .expandable {
+      position: relative;
+      overflow: hidden;
+      transition: max-height .55s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    /* توضیحات: ارتفاع کمتر */
+    #descBlock { max-height: 220px; }
+    #descBlock.is-expanded { max-height: 5000px; }
+
+    /* سرفصل‌ها: ارتفاع کم تا 2 ردیف */
+    #syllabusBlock { max-height: 320px; }
+    #syllabusBlock.is-expanded { max-height: 5000px; }
+
+    /* ماسک محوشدگی */
+    .expand-fade {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 90px;
+      background: linear-gradient(to bottom,
+        transparent,
+        var(--surface, #fff) 85%);
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity .3s ease;
+      z-index: 2;
+    }
+    .expandable.is-expanded .expand-fade {
+      opacity: 0;
+    }
+
+    /* چون گرید سرفصل‌ها خودش `overflow: hidden` رو با max-height می‌گیره،
+      فِید رو جدا می‌ذاریم */
+    .syllabus-grid { position: relative; }
+    .expand-fade-grid {
+      position: relative;
+      margin-top: -90px;
+      height: 90px;
+      pointer-events: none;
+      background: linear-gradient(to bottom,
+        transparent,
+        var(--surface, #fff) 85%);
+      transition: opacity .3s ease;
+    }
+    .syllabus-grid.is-expanded ~ .expand-fade-grid {
+      opacity: 0;
+    }
+
+    /* دکمه‌ی بازشو */
+    .expand-btn {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px 20px;
+      background: transparent;
+      border: 1.5px dashed var(--border-soft);
+      border-radius: 12px;
+      color: var(--coral);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: .9rem;
+      cursor: pointer;
+      transition: all .25s ease;
+    }
+    .expand-btn:hover {
+      background: rgba(255, 127, 80, 0.06);
+      border-color: var(--coral);
+      border-style: solid;
+    }
+    .expand-btn:active {
+      transform: scale(.99);
+    }
 </style>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.expand-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (!target) return;
+
+        const isExpanded = target.classList.toggle('is-expanded');
+        target.classList.toggle('is-collapsed', !isExpanded);
+
+        // تعویض متن دکمه
+        const newText = isExpanded
+          ? btn.dataset.less
+          : btn.dataset.more;
+        btn.textContent = newText;
+      });
+    });
+  });
+</script>
 {% endblock %}
