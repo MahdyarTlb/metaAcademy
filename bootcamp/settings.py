@@ -16,7 +16,9 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+print("DEBUG ENV =", os.environ.get("DEBUG"))
+DEBUG = env.bool("DEBUG")
+print("DEBUG VALUE =", DEBUG)
 
 ALLOWED_HOSTS = ['*']
 
