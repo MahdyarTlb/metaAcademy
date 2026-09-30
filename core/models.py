@@ -233,7 +233,7 @@ class Student(models.Model):
         verbose_name='شماره تلفن'
     )
     
-    national_code = models.CharField(unique=True, null=True, blank=True, verbose_name="کدملی", max_length=10)
+    national_code = models.CharField(null=True, blank=True, verbose_name="کدملی", max_length=10)
     
     email = models.EmailField(unique=True, null=True, blank=True, verbose_name="ایمیل", validators=[EmailValidator(message='ایمیل وارد شده صحیح نیست')])
     
@@ -287,6 +287,13 @@ class Student(models.Model):
         verbose_name = 'دانشجو'
         verbose_name_plural = 'دانشجویان'
         ordering = ['-created_at']
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['national_code'],
+        #         condition=models.Q(national_code__isnull=False),
+        #         name='unique_national_code_when_set',
+        #     ),
+        # ]
     
     def __str__(self):
         return self.name

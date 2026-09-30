@@ -20,6 +20,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from urllib.parse import urlencode
 from django.db.models import Count, Q, Prefetch, Min, Max
+import traceback
 
 def csrf_failure(request, reason=""):
     print("\n========== CSRF FAILURE ==========")
@@ -1153,6 +1154,95 @@ def export_excel(request):
     wb.save(response)
     return response
 
+# ═══════════════════════════════════════════════════════
+#  توابع کمکی پارس
+# ═══════════════════════════════════════════════════════
+
+HEADER_MAP = [
+    ('name',             ['نام و نام خانوادگی', 'نام و نام', 'نام']),
+    ('age',              ['سن']),
+    ('phone',            ['شماره تلفن', 'شماره موبایل', 'موبایل', 'تلفن']),
+    ('email',            ['ایمیل', 'email']),
+    ('national_code',    ['کدملی', 'کد ملی']),
+    ('is_certified',     ['is_certified', 'مدرک صادر', 'گواهی']),
+    ('reshte',           ['رشته']),
+    ('school',           ['دانشگاه/مدرسه', 'مدرسه', 'دانشگاه']),
+    ('city',             ['شهر']),
+    ('moaref',           ['نحوه آشنایی', 'معرف']),
+    ('created_at',       ['تاریخ ثبت', 'تاریخ']),
+    ('bootcamp',         ['slug دوره', 'دوره', 'bootcamp']),
+    ('with_certificate', ['با مدرک']),
+    ('referral_code',    ['کد معرف', 'referral']),
+]
+
+
+def _detect_columns(headers):
+    col = {}
+    for idx, raw in enumerate(headers):
+        h = str(raw).strip() if raw else ''
+        if not h:
+            continue
+        h_lower = h.lower()
+        for key, patterns in HEADER_MAP:
+            if key in col:
+                continue
+            for p in patterns:
+                if p.lower() in h_lower:
+                    if key == 'moaref' and 'کد' in h:
+                        continue
+                    if key == 'is_certified' and 'با' in h:
+                        continue
+                    col[key] = idx
+                    break
+    return col
+
+
+def _norm_phone(raw):
+    if raw is None:
+        return None
+    s = str(raw).strip().replace(' ', '').replace('-', '').replace('+98', '0')
+    s = s.translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789'))
+    if s.endswith('.0'):
+        s = s[:-2]
+    if s and not s.startswith('0') and len(s) == 10:
+        s = '0' + s
+    if len(s) != 11 or not s.startswith('09'):
+        return None
+    return s
+
+
+def _parse_int(raw, default=1, lo=1, hi=120):
+    try:
+        n = int(float(raw))
+        return n if lo <= n <= hi else default
+    except (ValueError, TypeError):
+        return default
+
+
+def _parse_date(raw):
+    if not raw:
+        return None
+    if isinstance(raw, datetime):
+        return raw
+    s = str(raw).strip()
+    for fmt in ('%Y/%m/%d %H:%M', '%Y-%m-%d %H:%M', '%Y/%m/%d', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _to_bool(raw):
+    if raw is None:
+        return False
+    return str(raw).strip().lower() in ('true', '1', 'بله', 'بلی', 'yes', 'دارد')
+
+
+# ═══════════════════════════════════════════════════════
+#  ویو اصلی
+# ═══════════════════════════════════════════════════════
+
 @staff_member_required
 def import_excel(request):
     if request.method != 'POST':
@@ -1169,241 +1259,271 @@ def import_excel(request):
         return redirect('core:import_excel')
 
     try:
-        wb = openpyxl.load_workbook(excel_file, data_only=True)
+        wb = openpyxl.load_workbook(excel_file, data_only=True, read_only=True)
         ws = wb.active
 
-        # ─── تشخیص هدرها ───
-        headers = [str(cell.value).strip() if cell.value else '' for cell in ws[1]]
+        headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        col = _detect_columns(headers)
 
-        col = {}
-        for idx, h in enumerate(headers):
-            if 'نام' in h and 'نام' not in col:
-                col['name'] = idx
-            elif h == 'سن' or 'سن' in h:
-                col['age'] = idx
-            elif 'تلفن' in h or 'شماره' in h and 'شماره' not in col.get('phone_used', ''):
-                col.setdefault('phone', idx)
-            elif 'کدملی' in h or 'کد ملی' in h:
-                col['national_code'] = idx
-            elif 'is_certified' in h or 'مدرک' in h and 'certified' not in col.get('cert_used', ''):
-                col.setdefault('is_certified', idx)
-            elif 'رشته' in h:
-                col['reshte'] = idx
-            elif 'مدرسه' in h or 'دانشگاه' in h:
-                col['school'] = idx
-            elif 'شهر' in h:
-                col['city'] = idx
-            elif 'معرف' in h and 'کد' not in h:
-                col['moaref'] = idx
-            elif 'تاریخ' in h or 'ثبت' in h:
-                col['created_at'] = idx
-            elif 'دوره' in h or 'bootcamp' in h.lower():
-                col['bootcamp'] = idx
-            elif 'با مدرک' in h:
-                col['with_certificate'] = idx
-            elif 'کد معرف' in h or 'referral' in h.lower():
-                col['referral_code'] = idx
+        if 'name' not in col or 'phone' not in col:
+            messages.error(request, '❌ ستون‌های «نام» و «شماره تلفن» ضروری هستند!')
+            return redirect('core:import_excel')
 
-        # ─── چک ستون‌های ضروری ───
-        required = ['name', 'phone']
-        for f in required:
-            if f not in col:
-                messages.error(request, f'❌ ستون "{f}" در فایل پیدا نشد!')
-                return redirect('core:import_excel')
-
-        # ─── تشخیص حالت: قدیمی یا جدید؟ ───
         is_legacy = 'bootcamp' not in col
-        default_bootcamp_slug = 'python-basic'
-
+        default_bootcamp = None
         if is_legacy:
-            default_bootcamp = Bootcamp.objects.filter(slug=default_bootcamp_slug).first()
+            default_bootcamp = Bootcamp.objects.filter(slug='python-basic').first()
             if not default_bootcamp:
-                messages.error(
-                    request,
-                    f'❌ بوت‌کمپ "{default_bootcamp_slug}" پیدا نشد. '
-                    f'اول اون رو بساز، بعد اکسل رو آپلود کن.'
-                )
+                messages.error(request, '❌ بوت‌کمپ "python-basic" پیدا نشد.')
                 return redirect('core:import_excel')
-            messages.info(
-                request,
-                f'📋 فایل قدیمی تشخیص داده شد — همه‌ی کاربران به «{default_bootcamp.title}» منتقل می‌شن.'
-            )
 
-        added_students = 0
-        updated_students = 0
-        added_enrollments = 0
+        # ═══════════════════════════════════════════════════
+        #  مرحله ۱ — پارس همه ردیف‌ها در حافظه
+        # ═══════════════════════════════════════════════════
+        parsed = []
         errors = []
+        seen_phones = {}
 
-        def cell_value(row, key):
+        def gv(row, key):
             if key not in col:
                 return None
-            idx = col[key]
-            val = row[idx] if idx < len(row) else None
-            if val is None:
+            i = col[key]
+            if i >= len(row):
                 return None
-            return str(val).strip() if isinstance(val, str) else val
+            v = row[i]
+            if v is None:
+                return None
+            return str(v).strip() if isinstance(v, str) else v
 
-        with transaction.atomic():
-            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                if not row or not any(row):
+        for ridx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not row or not any(row):
+                continue
+            try:
+                name = str(gv(row, 'name') or '').strip()
+                if not name:
+                    errors.append(f'ردیف {ridx}: نام خالی')
                     continue
 
-                try:
-                    # ─── اطلاعات پایه ───
-                    name = cell_value(row, 'name') or ''
-                    phone = cell_value(row, 'phone') or ''
-                    phone = str(phone).strip()
+                phone = _norm_phone(gv(row, 'phone'))
+                if not phone:
+                    errors.append(f'ردیف {ridx}: شماره «{gv(row, "phone")}» نامعتبر')
+                    continue
 
-                    if not name:
-                        errors.append(f'ردیف {row_idx}: نام خالی')
+                if phone in seen_phones:
+                    errors.append(f'ردیف {ridx}: شماره {phone} تکراری در فایل (ردیف {seen_phones[phone]})')
+                    continue
+                seen_phones[phone] = ridx
+
+                parsed.append({
+                    'row_idx': ridx,
+                    'name': name,
+                    'phone': phone,
+                    'age': _parse_int(gv(row, 'age')),
+                    'national_code': (str(gv(row, 'national_code')).strip() or None),
+                    'email': (str(gv(row, 'email')).strip().lower() or None) if gv(row, 'email') else None,
+                    'reshte': str(gv(row, 'reshte') or 'ثبت نشده').strip(),
+                    'school': str(gv(row, 'school') or 'ثبت نشده').strip(),
+                    'city':   str(gv(row, 'city')   or 'ثبت نشده').strip(),
+                    'moaref': (str(gv(row, 'moaref')).strip() or None) if gv(row, 'moaref') else None,
+                    'created_at': _parse_date(gv(row, 'created_at')),
+                    'is_cert': _to_bool(gv(row, 'is_certified')),
+                    'with_cert': (_to_bool(gv(row, 'with_certificate'))
+                                  if 'with_certificate' in col
+                                  else _to_bool(gv(row, 'is_certified'))),
+                    'referral_code': (str(gv(row, 'referral_code')).strip() or None)
+                                     if 'referral_code' in col else None,
+                    'bootcamp_slug': (str(gv(row, 'bootcamp')).strip() or None)
+                                     if not is_legacy else None,
+                })
+            except Exception as e:
+                errors.append(f'ردیف {ridx}: {e}')
+
+        if not parsed:
+            messages.warning(request, '⚠️ هیچ ردیف معتبری پیدا نشد.')
+            for err in errors[:10]:
+                messages.warning(request, f'⚠️ {err}')
+            return redirect('core:students')
+
+        # ═══════════════════════════════════════════════════
+        #  مرحله ۲ — Prefetch در ۴ کوئری
+        # ═══════════════════════════════════════════════════
+        phones = list(seen_phones.keys())
+
+        students_by_phone = {
+            s.phone_number: s
+            for s in Student.objects.filter(phone_number__in=phones)
+        }
+
+        if is_legacy:
+            bootcamps_by_slug = {default_bootcamp.slug: default_bootcamp}
+        else:
+            slugs = {d['bootcamp_slug'] for d in parsed if d['bootcamp_slug']}
+            bootcamps_by_slug = {
+                b.slug: b for b in Bootcamp.objects.filter(slug__in=slugs)
+            }
+
+        ref_codes = {d['referral_code'] for d in parsed if d['referral_code']}
+        referral_by_code = (
+            {r.code: r for r in ReferralSource.objects.filter(code__in=ref_codes)}
+            if ref_codes else {}
+        )
+
+        existing_ids = [s.pk for s in students_by_phone.values()]
+        enrollments_by_key = (
+            {(e.student_id, e.bootcamp_id): e
+             for e in Enrollment.objects.filter(student_id__in=existing_ids)}
+            if existing_ids else {}
+        )
+
+        # ═══════════════════════════════════════════════════
+        #  مرحله ۳ — تصمیم‌گیری در حافظه
+        # ═══════════════════════════════════════════════════
+        students_to_create = []
+        students_to_update = []
+        students_created_at = {}  # phone → datetime
+
+        for d in parsed:
+            phone = d['phone']
+            student = students_by_phone.get(phone)
+
+            if student is None:
+                student = Student(
+                    phone_number=phone,
+                    name=d['name'],
+                    age=d['age'],
+                    national_code=d['national_code'],
+                    email=d['email'],
+                    reshte=d['reshte'],
+                    school=d['school'],
+                    city=d['city'],
+                    moaref=d['moaref'],
+                )
+                if d['referral_code'] and d['referral_code'] in referral_by_code:
+                    student.referred_by = referral_by_code[d['referral_code']]
+
+                students_to_create.append(student)
+                students_by_phone[phone] = student
+
+                if d['created_at']:
+                    students_created_at[phone] = d['created_at']
+            else:
+                changed = False
+                for f, v in [
+                    ('name', d['name']), ('age', d['age']),
+                    ('national_code', d['national_code']),
+                    ('email', d['email']),
+                    ('reshte', d['reshte']), ('school', d['school']),
+                    ('city', d['city']), ('moaref', d['moaref']),
+                ]:
+                    if v and not getattr(student, f):
+                        setattr(student, f, v)
+                        changed = True
+                if d['referral_code'] and not student.referred_by:
+                    src = referral_by_code.get(d['referral_code'])
+                    if src:
+                        student.referred_by = src
+                        changed = True
+                if changed:
+                    students_to_update.append(student)
+
+        # ═══════════════════════════════════════════════════
+        #  مرحله ۴ — اجرای bulk (اتمی)
+        # ═══════════════════════════════════════════════════
+        with transaction.atomic():
+            if students_to_create:
+                Student.objects.bulk_create(students_to_create, batch_size=500)
+
+            if students_to_update:
+                Student.objects.bulk_update(
+                    students_to_update,
+                    ['name', 'age', 'national_code', 'email', 'reshte',
+                     'school', 'city', 'moaref', 'referred_by'],
+                    batch_size=500,
+                )
+
+            # created_at سفارشی (کم پیش میاد)
+            for phone, dt in students_created_at.items():
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt)
+                student = students_by_phone[phone]
+                Student.objects.filter(pk=student.pk).update(created_at=dt)
+                student.created_at = dt
+
+            # ═══════════════════════════════════════════════
+            #  مرحله ۵ — Enrollmentها
+            # ═══════════════════════════════════════════════
+            enrollments_to_create = []
+            enrollments_to_update = []
+
+            for d in parsed:
+                student = students_by_phone[d['phone']]
+
+                if is_legacy:
+                    bootcamp = default_bootcamp
+                else:
+                    bootcamp = bootcamps_by_slug.get(d['bootcamp_slug'])
+                    if not bootcamp:
+                        errors.append(
+                            f'ردیف {d["row_idx"]}: بوت‌کمپ «{d["bootcamp_slug"]}» پیدا نشد'
+                        )
                         continue
 
-                    # ─── استانداردسازی شماره ───
-                    if phone and not phone.startswith('0') and len(phone) == 10:
-                        phone = '0' + phone
-                    if not phone.startswith('09') or len(phone) != 11:
-                        errors.append(f'ردیف {row_idx}: شماره {phone} نامعتبر')
-                        continue
+                key = (student.pk, bootcamp.pk)
+                enrollment = enrollments_by_key.get(key)
+                created_at = student.created_at or timezone.now()
 
-                    # ─── سن ───
-                    age_raw = cell_value(row, 'age')
-                    try:
-                        age = int(age_raw) if age_raw else 1
-                        if not 1 <= age <= 120:
-                            age = 1
-                    except (ValueError, TypeError):
-                        age = 1
-
-                    national_code = cell_value(row, 'national_code')
-                    reshte = cell_value(row, 'reshte') or 'ثبت نشده'
-                    school = cell_value(row, 'school') or 'ثبت نشده'
-                    city = cell_value(row, 'city') or 'ثبت نشده'
-                    moaref = cell_value(row, 'moaref') or None
-                    created_str = cell_value(row, 'created_at')
-
-                    # ─── ساخت/آپدیت دانشجو ───
-                    student, created = Student.objects.get_or_create(
-                        phone_number=phone,
-                        defaults={
-                            'name': name,
-                            'age': age,
-                            'national_code': national_code,
-                            'reshte': reshte,
-                            'school': school,
-                            'city': city,
-                            'moaref': moaref,
-                        }
-                    )
-
-                    if created:
-                        added_students += 1
-                    else:
-                        # اگه دانشجو وجود داشت، فیلدهای خالی رو پر کن (بدون override)
-                        changed = []
-                        for field, val in [
-                            ('name', name), ('age', age),
-                            ('national_code', national_code),
-                            ('reshte', reshte), ('school', school),
-                            ('city', city), ('moaref', moaref),
-                        ]:
-                            if val and not getattr(student, field):
-                                setattr(student, field, val)
-                                changed.append(field)
-                        if changed:
-                            student.save(update_fields=changed)
-                            updated_students += 1
-
-                    # ─── تنظیم created_at اگه توی اکسل بود ───
-                    if created_str:
-                        try:
-                            dt = datetime.strptime(str(created_str), '%Y/%m/%d %H:%M')
-                            if timezone.is_naive(dt):
-                                dt = timezone.make_aware(dt)
-                            Student.objects.filter(pk=student.pk).update(created_at=dt)
-                            student.created_at = dt
-                        except ValueError:
-                            errors.append(f'ردیف {row_idx}: تاریخ نامعتبر — {created_str}')
-
-                    # ─── منبع معرفی (اگه جدید بود) ───
-                    referral_code = cell_value(row, 'referral_code')
-                    if referral_code:
-                        source = ReferralSource.objects.filter(code=str(referral_code).strip()).first()
-                        if source and not student.referred_by:
-                            student.referred_by = source
-                            student.save(update_fields=['referred_by'])
-
-                    # ─── پیدا کردن بوت‌کمپ ───
-                    if is_legacy:
-                        bootcamp = default_bootcamp
-                    else:
-                        slug = cell_value(row, 'bootcamp')
-                        if not slug:
-                            errors.append(f'ردیف {row_idx}: ستون دوره خالی')
-                            continue
-                        bootcamp = Bootcamp.objects.filter(slug=str(slug).strip()).first()
-                        if not bootcamp:
-                            errors.append(f'ردیف {row_idx}: بوت‌کمپ «{slug}» پیدا نشد')
-                            continue
-
-                    # ─── با مدرک؟ ───
-                    if 'with_certificate' in col:
-                        with_cert_raw = cell_value(row, 'with_certificate')
-                        with_cert = str(with_cert_raw).lower() in ('true', '1', 'بله', 'بلی', 'yes')
-                    else:
-                        # قدیمی: اگه is_certified داشت، پس با مدرک بوده
-                        cert_raw = cell_value(row, 'is_certified')
-                        with_cert = str(cert_raw).lower() in ('true', '1', 'بله', 'بلی', 'yes')
-
-                    # ─── is_certified ───
-                    cert_raw = cell_value(row, 'is_certified')
-                    is_cert = str(cert_raw).lower() in ('true', '1', 'بله', 'بلی', 'yes')
-
-                    # ─── ساخت/آپدیت Enrollment ───
-                    enrollment, e_created = Enrollment.objects.get_or_create(
+                if enrollment is None:
+                    enrollment = Enrollment(
                         student=student,
                         bootcamp=bootcamp,
-                        defaults={
-                            'with_certificate': with_cert or is_cert,
-                            'is_active': True,
-                            'is_certified': is_cert,
-                            'registration_payment_submitted': True,
-                            'registration_paid_at': student.created_at,
-                            'certificate_issued_at': student.created_at if is_cert else None,
-                        }
+                        with_certificate=d['with_cert'] or d['is_cert'],
+                        is_active=True,
+                        is_certified=d['is_cert'],
+                        registration_payment_submitted=True,
+                        registration_paid_at=created_at,
+                        certificate_issued_at=created_at if d['is_cert'] else None,
                     )
+                    enrollments_to_create.append(enrollment)
+                    enrollments_by_key[key] = enrollment
+                else:
+                    changed = []
+                    if d['is_cert'] and not enrollment.is_certified:
+                        enrollment.is_certified = True
+                        enrollment.certificate_issued_at = created_at
+                        changed += ['is_certified', 'certificate_issued_at']
+                    if (d['with_cert'] or d['is_cert']) and not enrollment.with_certificate:
+                        enrollment.with_certificate = True
+                        changed.append('with_certificate')
+                    if not enrollment.is_active:
+                        enrollment.is_active = True
+                        changed.append('is_active')
+                    if changed:
+                        enrollments_to_update.append(enrollment)
 
-                    if e_created:
-                        added_enrollments += 1
-                    else:
-                        # آپدیت اگه لازم بود
-                        changed = []
-                        if is_cert and not enrollment.is_certified:
-                            enrollment.is_certified = True
-                            enrollment.certificate_issued_at = student.created_at
-                            changed.extend(['is_certified', 'certificate_issued_at'])
-                        if with_cert and not enrollment.with_certificate:
-                            enrollment.with_certificate = True
-                            changed.append('with_certificate')
-                        if not enrollment.is_active:
-                            enrollment.is_active = True
-                            changed.append('is_active')
-                        if changed:
-                            enrollment.save(update_fields=changed)
+            if enrollments_to_create:
+                Enrollment.objects.bulk_create(enrollments_to_create, batch_size=500)
 
-                except Exception as e:
-                    errors.append(f'ردیف {row_idx}: {e}')
+            if enrollments_to_update:
+                Enrollment.objects.bulk_update(
+                    enrollments_to_update,
+                    ['is_certified', 'certificate_issued_at',
+                     'with_certificate', 'is_active'],
+                    batch_size=500,
+                )
 
-        # ─── گزارش ───
+        # ═══════════════════════════════════════════════════
+        #  گزارش
+        # ═══════════════════════════════════════════════════
         summary = []
-        if added_students:
-            summary.append(f'👤 {added_students} دانشجوی جدید')
-        if updated_students:
-            summary.append(f'✏️ {updated_students} دانشجوی به‌روزشده')
-        if added_enrollments:
-            summary.append(f'📚 {added_enrollments} ثبت‌نام جدید')
+        if students_to_create:       summary.append(f'👤 {len(students_to_create)} دانشجوی جدید')
+        if students_to_update:       summary.append(f'✏️ {len(students_to_update)} دانشجوی به‌روزشده')
+        if enrollments_to_create:    summary.append(f'📚 {len(enrollments_to_create)} ثبت‌نام جدید')
+        if enrollments_to_update:    summary.append(f'🔄 {len(enrollments_to_update)} ثبت‌نام به‌روزشده')
 
         if summary:
             messages.success(request, '✅ ' + ' — '.join(summary))
+        else:
+            messages.info(request, 'ℹ️ تغییری اعمال نشد.')
 
         for err in errors[:8]:
             messages.warning(request, f'⚠️ {err}')
@@ -1413,5 +1533,7 @@ def import_excel(request):
         return redirect('core:students')
 
     except Exception as e:
-        messages.error(request, f'❌ خطا در خواندن فایل: {e}')
+        traceback.print_exc()
+        messages.error(request, f'❌ خطا در پردازش فایل: {e}')
         return redirect('core:import_excel')
+
