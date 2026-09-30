@@ -387,6 +387,11 @@ class Enrollment(models.Model):
         related_name='enrollments',
         verbose_name='دوره'
     )
+    tracking_code = models.CharField(
+        max_length=7, unique=True, null=True, blank=True,
+        verbose_name='کد رهگیری مدرک',
+        db_index=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ثبت‌نام')
     with_certificate = models.BooleanField(
         default=False, verbose_name='ثبت‌نام با مدرک'

@@ -27,6 +27,13 @@
           مدرک دوره‌ی «{{ bootcamp.title }}» با موفقیت صادر شد.
         </p>
 
+         {% if enrollment.tracking_code %}
+            <div class="cert-tracking">
+              <span>کد رهگیری:</span>
+              <code dir="ltr">{{ enrollment.tracking_code }}</code>
+            </div>
+          {% endif %}
+
         <div class="cert-preview">
           <img src="{{ certificate_url }}" alt="مدرک {{ student.name }}">
         </div>
@@ -81,7 +88,12 @@
       {% elif mode == 'form' %}
         <div class="cert-icon">📝</div>
         <h1 class="cert-title">تکمیل اطلاعات مدرک</h1>
-        <p class="cert-lead">
+        {% if already_paid %}
+          <div class="cert-paid-banner">
+            ✅ هزینه‌ی این مدرک قبلاً پرداخت شده. فقط اطلاعات را تایید کنید.
+          </div>
+        {% endif %}
+              <p class="cert-lead">
           اطلاعات زیر دقیقاً مطابق شناسنامه وارد شود؛ چاپ روی مدرک از همین اطلاعات انجام می‌شود.
         </p>
 
@@ -335,6 +347,25 @@
     font-size: .82rem;
     color: var(--text-muted);
     line-height: 1.7;
+  }
+  .cert-tracking {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,.04);
+    border: 1px dashed var(--border-soft);
+    padding: 8px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: .85rem;
+    color: var(--text-muted);
+  }
+  .cert-tracking code {
+    font-family: 'Courier New', monospace;
+    font-weight: 800;
+    color: var(--coral);
+    font-size: 1rem;
+    letter-spacing: 2px;
   }
 </style>
 {% endblock %}

@@ -21,6 +21,7 @@ from django.contrib.auth.decorators import login_required
 from urllib.parse import urlencode
 from django.db.models import Count, Q, Prefetch, Min, Max
 import traceback
+import secrets
 
 def csrf_failure(request, reason=""):
     print("\n========== CSRF FAILURE ==========")
@@ -794,11 +795,27 @@ class CertificateView(EnrolledStudentRequiredMixin, View):
                 'certificate_url': enrollment.certificate_file.url,
             })
             return base
-
+        
+        if enrollment.is_certified and not enrollment.certificate_file:
+                    if form is None:
+                        form = CertificateForm(initial={
+                            'name': student.name,
+                            'national_code': student.national_code or '',
+                        })
+                    base.update({
+                        'mode': 'form',
+                        'form': form,
+                        'needs_payment': False,
+                        'already_paid': True,
+                    })
+                    return base
+                
         # حالت ۲: در انتظار تأیید پرداخت
         if fee > 0 and payment:
             base.update({'mode': 'pending', 'payment': payment})
             return base
+        
+        
 
         # حالت ۳: هنوز دوره تموم نشده
         if not enrollment.is_completed:
@@ -842,7 +859,7 @@ class CertificateView(EnrolledStudentRequiredMixin, View):
             return redirect('core:certificate', slug=slug)
 
         # ─── گارد: اگه پولی و پرداخت تأیید نشده، مدرک صادر نکن ───
-        if fee > 0:
+        if fee > 0 and not Enrollment.is_certified:
             messages.error(
                 request,
                 'برای صدور این مدرک، ابتدا هزینه را پرداخت و تأیید کنید.'
@@ -1065,6 +1082,52 @@ def payment_request_view(request):
         'form': form,
         'student': student
     })
+
+class CertificateVerifyView(TemplateView):
+    template_name = 'certificate_verify.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'استعلام مدرک'
+        return context
+
+    def post(self, request):
+        code = request.POST.get('tracking_code', '').strip()
+
+        # پاک کردن کاراکترهای غیرعددی + تبدیل اعداد فارسی
+        code = code.translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789'))
+        code = ''.join(ch for ch in code if ch.isdigit())
+
+        context = {
+            'title': 'استعلام مدرک',
+            'query': request.POST.get('tracking_code', ''),
+        }
+
+        # ─── اعتبارسنجی ورودی ───
+        if not code:
+            context['error'] = 'کد رهگیری را وارد کنید.'
+            return render(request, self.template_name, context)
+
+        if len(code) != 7:
+            context['error'] = 'کد رهگیری باید ۷ رقم باشد.'
+            return render(request, self.template_name, context)
+
+        # ─── جستجو ───
+        enrollment = (
+            Enrollment.objects
+            .select_related('student', 'bootcamp')
+            .filter(tracking_code=code, is_certified=True)
+            .first()
+        )
+
+        if not enrollment:
+            context['not_found'] = True
+            return render(request, self.template_name, context)
+
+        context['enrollment'] = enrollment
+        context['student'] = enrollment.student
+        context['bootcamp'] = enrollment.bootcamp
+        return render(request, self.template_name, context)
     
 @staff_member_required
 def export_excel(request):
@@ -1452,6 +1515,19 @@ def import_excel(request):
             # ═══════════════════════════════════════════════
             #  مرحله ۵ — Enrollmentها
             # ═══════════════════════════════════════════════
+            existing_codes = set(
+                Enrollment.objects
+                .exclude(tracking_code__isnull=True)
+                .values_list('tracking_code', flat=True)
+            )
+
+            def _gen_code():
+                while True:
+                    code = ''.join(secrets.choice('0123456789') for _ in range(7))
+                    if code not in existing_codes:
+                        existing_codes.add(code)
+                        return code
+
             enrollments_to_create = []
             enrollments_to_update = []
 
@@ -1473,6 +1549,9 @@ def import_excel(request):
                 created_at = student.created_at or timezone.now()
 
                 if enrollment is None:
+                    # ─── جدید: کد رهگیری برای کاربرانی که با مدرک آنلاین می‌شن ───
+                    tracking = _gen_code() if d['is_cert'] else None
+
                     enrollment = Enrollment(
                         student=student,
                         bootcamp=bootcamp,
@@ -1482,6 +1561,7 @@ def import_excel(request):
                         registration_payment_submitted=True,
                         registration_paid_at=created_at,
                         certificate_issued_at=created_at if d['is_cert'] else None,
+                        tracking_code=tracking,                 # ← اینجا
                     )
                     enrollments_to_create.append(enrollment)
                     enrollments_by_key[key] = enrollment
@@ -1491,6 +1571,12 @@ def import_excel(request):
                         enrollment.is_certified = True
                         enrollment.certificate_issued_at = created_at
                         changed += ['is_certified', 'certificate_issued_at']
+
+                    # ─── جدید: اگه مدرک داره ولی کد رهگیری نداره ───
+                    if enrollment.is_certified and not enrollment.tracking_code:
+                        enrollment.tracking_code = _gen_code()
+                        changed.append('tracking_code')
+
                     if (d['with_cert'] or d['is_cert']) and not enrollment.with_certificate:
                         enrollment.with_certificate = True
                         changed.append('with_certificate')
@@ -1507,7 +1593,7 @@ def import_excel(request):
                 Enrollment.objects.bulk_update(
                     enrollments_to_update,
                     ['is_certified', 'certificate_issued_at',
-                     'with_certificate', 'is_active'],
+                    'with_certificate', 'is_active', 'tracking_code'],   # ← tracking_code اضافه شد
                     batch_size=500,
                 )
 

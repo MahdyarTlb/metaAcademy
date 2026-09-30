@@ -24,6 +24,7 @@
         <a href="{% url 'core:home' %}" class="nav-link{% if request.resolver_match.url_name == 'home' %} is-active{% endif %}">خانه</a>
         <a href="{% url 'core:bootcamp_list' %}" class="nav-link{% if request.resolver_match.url_name == 'bootcamp_list' or request.resolver_match.url_name == 'bootcamp_detail' %} is-active{% endif %}">دوره‌ها</a>
         <a href="{% url 'core:dashboard' %}" class="nav-link{% if request.resolver_match.url_name == 'check_view' %} is-active{% endif %}">پنل کاربری</a>
+        <a href="{% url 'core:certificate_verify' %}"class="nav-link{% if request.resolver_match.url_name == 'certificate_verify' %} is-active{% endif %}">استعلام مدرک</a>
       </nav>
       {% if request.session.auth_student_id %}      
         <div class="header-actions">

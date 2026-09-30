@@ -30,4 +30,5 @@ urlpatterns = [
     
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('payment/', views.payment_request_view, name='payment'),
+    path('verify/', views.CertificateVerifyView.as_view(), name='certificate_verify'),
 ]

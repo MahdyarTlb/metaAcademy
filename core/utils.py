@@ -2,7 +2,9 @@ from PIL import Image, ImageDraw, ImageFont, ImageMath
 from django.conf import settings
 from io import BytesIO
 from django.core.files.base import ContentFile
+from .models import Enrollment
 import os
+import secrets
 from io import BytesIO
 import arabic_reshaper
 from bidi.algorithm import get_display
@@ -13,6 +15,14 @@ except Exception:
     HAS_RAQM = False
 
 FONT_PATH = "static/fonts/YekanBakh-VF.woff2"
+
+def generate_unique_tracking_code():
+    """کد ۷ رقمی یکتا. با حداکثر ۲۰ تلاش."""
+    for _ in range(20):
+        code = ''.join(secrets.choice('0123456789') for _ in range(7))
+        if not Enrollment.objects.filter(tracking_code=code).exists():
+            return code
+    raise RuntimeError('نتونستم کد رهگیری یکتا پیدا کنم')
 
 def to_persian_digits(text):
     return str(text).translate(
@@ -90,6 +100,11 @@ def generate_certificate_for_student(enrollment, base_template_path=None):
     student = enrollment.student
     bootcamp = enrollment.bootcamp
     
+    if not enrollment.tracking_code:
+        enrollment.tracking_code = generate_unique_tracking_code()
+        enrollment.save(update_fields=['tracking_code'])
+
+    
     if base_template_path is None:
         if bootcamp.certificate_template:
             base_template_path = bootcamp.certificate_template.path
@@ -163,6 +178,18 @@ def generate_certificate_for_student(enrollment, base_template_path=None):
         font=national_code_font
     )
 
+    if enrollment.tracking_code:
+        tracking_font = load_font(size=19, weight=400)
+        tracking_text = prepare_persian_text("کدرهگیری: " + to_persian_digits(enrollment.tracking_code))
+
+        draw_centered_text(
+            draw=draw,
+            text=tracking_text,
+            center_x=210,
+            y=87,
+            font=tracking_font,
+        )
+    
     # =========================
     # ذخیره
     # =========================
