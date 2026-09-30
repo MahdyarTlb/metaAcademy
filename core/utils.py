@@ -40,6 +40,14 @@ def prepare_persian_text(text):
         return displayed[::-1]
     return displayed
 
+def prepare_persian_tr(text):
+    """آماده‌سازی متن فارسی برای Pillow"""
+    reshaped = arabic_reshaper.reshape(str(text))
+    displayed = get_display(reshaped)
+    if HAS_RAQM:
+        return displayed[::-1]
+    return displayed
+
 
 def load_font(size, weight=400):
     """
@@ -180,7 +188,7 @@ def generate_certificate_for_student(enrollment, base_template_path=None):
 
     if enrollment.tracking_code:
         tracking_font = load_font(size=19, weight=400)
-        tracking_text = prepare_persian_text("کدرهگیری: " + to_persian_digits(enrollment.tracking_code))
+        tracking_text = prepare_persian_tr("کدرهگیری: " + to_persian_digits((enrollment.tracking_code)))
 
         draw_centered_text(
             draw=draw,
