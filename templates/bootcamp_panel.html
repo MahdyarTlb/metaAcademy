@@ -102,17 +102,46 @@
     {# کانال‌ها + مدرک #}
     <div class="bp-bottom-grid">
       <div class="bp-card">
-        <h3 class="bp-card-title">📢 کانال‌های اطلاع‌رسانی</h3>
+        <h3 class="bp-card-title">📢 کانال‌ها و گروه‌ها</h3>
+
+        {# ─── کانال‌های عمومی (ثابت) ─── #}
         <div class="bp-channels">
           <a href="https://t.me/metanix_ir" target="_blank" class="bp-channel">
             <span class="bp-ch-badge telegram">تلگرام</span>
-            <span>@metanix_ir</span>
+            <span>کانال عمومی @metanix_ir</span>
           </a>
           <a href="https://ble.ir/metanix_ir" target="_blank" class="bp-channel">
             <span class="bp-ch-badge bale">بله</span>
-            <span>@metanix_ir</span>
+            <span>کانال عمومی @metanix_ir</span>
           </a>
         </div>
+
+        {# ─── گروه پشتیبانی اختصاصی دوره ─── #}
+        {% if bootcamp.telegram_group_url or bootcamp.bale_group_url %}
+          <div class="bp-group-sep">
+            <span>🎓 گروه پشتیبانی این دوره</span>
+          </div>
+          <div class="bp-channels">
+            {% if bootcamp.telegram_group_url %}
+              <a href="{{ bootcamp.telegram_group_url }}" target="_blank"
+                class="bp-channel bp-channel-primary">
+                <span class="bp-ch-badge telegram">تلگرام</span>
+                <span>ورود به گروه دوره ←</span>
+              </a>
+            {% endif %}
+            {% if bootcamp.bale_group_url %}
+              <a href="{{ bootcamp.bale_group_url }}" target="_blank"
+                class="bp-channel bp-channel-primary">
+                <span class="bp-ch-badge bale">بله</span>
+                <span>ورود به گروه دوره ←</span>
+              </a>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="bp-group-empty">
+            ℹ️ گروه پشتیبانی این دوره هنوز تنظیم نشده.
+          </div>
+        {% endif %}
       </div>
 
       <div class="bp-card">
@@ -434,5 +463,42 @@
     margin: 0 0 16px;
   }
   .bp-cert-ready { color: #047857; font-weight: 700; }
+  .bp-group-sep {
+    margin: 18px 0 12px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-soft);
+    font-size: .82rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .bp-channel-primary {
+    background: linear-gradient(135deg,
+      rgba(255,127,80,.08),
+      rgba(240,219,30,.04));
+    border-color: rgba(255,127,80,.3);
+    color: var(--coral);
+    font-weight: 700;
+  }
+  .bp-channel-primary:hover {
+    border-color: var(--coral);
+    background: linear-gradient(135deg,
+      rgba(255,127,80,.14),
+      rgba(240,219,30,.06));
+  }
+  .bp-channel-primary .bp-ch-badge {
+    opacity: 1;
+  }
+
+  .bp-group-empty {
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: rgba(0,0,0,.03);
+    border-radius: 10px;
+    text-align: center;
+    font-size: .82rem;
+    color: var(--text-muted);
+  }
 </style>
 {% endblock %}

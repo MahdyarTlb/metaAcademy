@@ -139,6 +139,17 @@ class Bootcamp(models.Model):
         null=True,
         verbose_name='ظرفیت ثبت‌نام باقیمانده'
     )
+    
+    telegram_group_url = models.URLField(
+        blank=True, null=True,
+        verbose_name='لینک گروه تلگرام',
+        help_text='لینک دعوت گروه پشتیبانی تلگرام این دوره'
+    )
+    bale_group_url = models.URLField(
+        blank=True, null=True,
+        verbose_name='لینک گروه بله',
+        help_text='لینک دعوت گروه پشتیبانی بله این دوره'
+    )
 
     is_active = models.BooleanField(
         default=True,
