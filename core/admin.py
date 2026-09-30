@@ -383,7 +383,7 @@ class SessionAdmin(admin.ModelAdmin):
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = [
-        'student_link', 'bootcamp_link', 'progress_display', 'referral_source_display', 'registration_status', 'registration_tracking_code',
+        'student_link', 'bootcamp_link', 'progress_display', 'referral_source_display', 'registration_status', 'registration_tracking_code', 'certificate_choice_display'
         'is_certified', 'certificate_link', 'created_at_jalali',
     ]
     list_filter = ['is_active', 'is_certified', 'with_certificate', 'bootcamp', 'created_at']
@@ -422,6 +422,46 @@ class EnrollmentAdmin(admin.ModelAdmin):
         }),
     )
 
+    @admin.display(description='نوع ثبت‌نام')
+    def certificate_choice_display(self, obj):
+        # ─── ساخت بج اصلی ───
+        if obj.is_certified:
+            badge = (
+                '<span style="background:rgba(16,185,129,.15); color:#047857; '
+                'padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;">'
+                '🎓 با مدرک (صادر شد)</span>'
+            )
+        elif obj.with_certificate:
+            fee = obj.bootcamp.certificate_fee
+            if fee > 0:
+                badge = (
+                    '<span style="background:rgba(245,158,11,.15); color:#b45309; '
+                    'padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;">'
+                    '⏳ با مدرک (در انتظار)</span>'
+                )
+            else:
+                badge = (
+                    '<span style="background:rgba(59,130,246,.15); color:#1d4ed8; '
+                    'padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;">'
+                    '🎓 با مدرک</span>'
+                )
+        else:
+            badge = (
+                '<span style="background:rgba(107,114,128,.12); color:#4b5563; '
+                'padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">'
+                '📘 بدون مدرک</span>'
+            )
+
+        # ─── اضافه کردن کد رهگیری اگه هست ───
+        if obj.tracking_code:
+            return format_html(
+                '{}<br><code style="font-size:11px; color:#6b7280;">{}</code>',
+                mark_safe(badge),
+                obj.tracking_code,
+            )
+
+        return mark_safe(badge)
+        
     # ---- ستون‌ها ----
     def referral_source_display(self, obj):
         if not obj.referral_source:

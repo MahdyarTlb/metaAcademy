@@ -44,8 +44,7 @@ def prepare_persian_tr(text):
     """آماده‌سازی متن فارسی برای Pillow"""
     reshaped = arabic_reshaper.reshape(str(text))
     displayed = get_display(reshaped)
-    if HAS_RAQM:
-        return displayed[::-1]
+
     return displayed
 
 
