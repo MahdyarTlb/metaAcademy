@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load jformat %}
 {% block title %}{{ bootcamp.title }} | پارس ایکس{% endblock %}
 
 {% block content %}
@@ -68,7 +69,7 @@
                     {% elif session.status == 'today' %}
                       ⏰ امروز
                     {% else %}
-                      ⏳ {{ session.date }}
+                      ⏳ {{ session.date|jformat:"%d %B" }}
                     {% endif %}
                   </span>
                 </div>
@@ -83,7 +84,7 @@
                     {% elif session.session_type == 'offline' %}📼 آفلاین
                     {% else %}🏛 حضوری{% endif %}
                   </span>
-                  <span class="bp-date">📆 {{ session.date }}</span>
+                  <span class="bp-date">📆 {{ session.date|jformat:"%d %B %Y" }}</span>
                 </div>
               </div>
 

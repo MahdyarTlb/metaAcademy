@@ -160,8 +160,20 @@ reset_payment_submission.short_description = '🔄 ریست کد پیگیری (�
 #  Session (inline توی Bootcamp)
 # ═══════════════════════════════════════════════════════
 
+class SessionInlineForm(forms.ModelForm):
+    date = JalaliDateField(
+        label='تاریخ برگزاری',
+        widget=AdminJalaliDateWidget,
+        required=True,
+    )
+
+    class Meta:
+        model = Session
+        fields = '__all__'
+        
 class SessionInline(admin.TabularInline):
     model = Session
+    form = SessionInlineForm
     extra = 1
     fields = [
         'number', 'title', 'session_type', 'date',
@@ -170,8 +182,7 @@ class SessionInline(admin.TabularInline):
     ordering = ['number']
     show_change_link = True
     # classes = ['collapse']
-
-
+    
 # ═══════════════════════════════════════════════════════
 #  Bootcamp
 # ═══════════════════════════════════════════════════════
@@ -291,8 +302,20 @@ class BootcampAdmin(admin.ModelAdmin):
 #  Session
 # ═══════════════════════════════════════════════════════
 
+class SessionAdminForm(forms.ModelForm):
+    date = JalaliDateField(
+        label='تاریخ برگزاری',
+        widget=AdminJalaliDateWidget,
+        required=True,
+    )
+
+    class Meta:
+        model = Session
+        fields = '__all__'
+        
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
+    form = SessionAdminForm
     list_display = [
         'bootcamp_link', 'number', 'title', 'session_type',
         'date_jalali', 'status_display', 'is_live', 'has_video',
