@@ -137,7 +137,6 @@ class Bootcamp(models.Model):
     remaining_capacity = models.PositiveIntegerField(
         blank=True,
         null=True,
-        default=capacity,
         verbose_name='ظرفیت ثبت‌نام باقیمانده'
     )
 
