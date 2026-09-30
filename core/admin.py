@@ -383,7 +383,7 @@ class SessionAdmin(admin.ModelAdmin):
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = [
-        'student_link', 'bootcamp_link', 'progress_display', 'referral_source_display', 'registration_status', 'registration_tracking_code', 'certificate_choice_display'
+        'student_link', 'bootcamp_link', 'progress_display', 'referral_source_display', 'registration_status', 'registration_tracking_code', 'certificate_choice_display',
         'is_certified', 'certificate_link', 'created_at_jalali',
     ]
     list_filter = ['is_active', 'is_certified', 'with_certificate', 'bootcamp', 'created_at']
