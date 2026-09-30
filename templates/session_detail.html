@@ -65,23 +65,24 @@
 
     {# ناوبری #}
     <nav class="sd-nav">
-      {% with prev=session.number|add:"-1" next=session.number|add:"1" %}
-        {% if prev >= 1 %}
-          <a href="{% url 'core:session_detail' slug=bootcamp.slug number=prev %}" class="sd-nav-btn">
-            → جلسه‌ی قبل
-          </a>
-        {% else %}
-          <span class="sd-nav-btn sd-nav-disabled">→ جلسه‌ی قبل</span>
-        {% endif %}
-        {% if next <= total_sessions %}
-          <a href="{% url 'core:session_detail' slug=bootcamp.slug number=next %}" class="sd-nav-btn sd-nav-next">
-            جلسه‌ی بعد ←
-          </a>
-        {% else %}
-          <span class="sd-nav-btn sd-nav-disabled">جلسه‌ی بعد ←</span>
-        {% endif %}
-      {% endwith %}
-    </nav>
+    {% with prev=session.number|add:"-1" next=session.number|add:"1" %}
+      {% if prev >= first_session_number %}
+        <a href="{% url 'core:session_detail' slug=bootcamp.slug number=prev %}" class="sd-nav-btn">
+          → جلسه‌ی قبل
+        </a>
+      {% else %}
+        <span class="sd-nav-btn sd-nav-disabled">→ جلسه‌ی قبل</span>
+      {% endif %}
+
+      {% if next <= last_session_number %}
+        <a href="{% url 'core:session_detail' slug=bootcamp.slug number=next %}" class="sd-nav-btn sd-nav-next">
+          جلسه‌ی بعد ←
+        </a>
+      {% else %}
+        <span class="sd-nav-btn sd-nav-disabled">جلسه‌ی بعد ←</span>
+      {% endif %}
+    {% endwith %}
+  </nav>
 
   </div>
 </section>

@@ -19,7 +19,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from urllib.parse import urlencode
-from django.db.models import Count, Q, Prefetch
+from django.db.models import Count, Q, Prefetch, Min, Max
 
 def csrf_failure(request, reason=""):
     print("\n========== CSRF FAILURE ==========")
@@ -755,10 +755,16 @@ class SessionDetailView(EnrolledStudentRequiredMixin, TemplateView):
         number = self.kwargs.get('number')
         session = get_object_or_404(Session, bootcamp=bootcamp, number=number)
 
+        bounds = bootcamp.sessions.aggregate(
+            first=Min('number'),
+            last=Max('number'),
+        )
         context.update({
             'session': session,
             'bootcamp': bootcamp,
             'total_sessions': bootcamp.sessions.count(),
+            'first_session_number': bounds['first'] or 0,
+            'last_session_number': bounds['last'] or 0,
             'title': session.title,
         })
         return context
