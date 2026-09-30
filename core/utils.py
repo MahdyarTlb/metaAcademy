@@ -45,6 +45,17 @@ def prepare_persian_tr(text):
     reshaped = arabic_reshaper.reshape(str(text))
     displayed = get_display(reshaped)
 
+    if HAS_RAQM:
+        # اعداد را قبل از reverse دوباره reverse می‌کنیم
+        import re
+        displayed = re.sub(
+            r'[۰-۹]+',
+            lambda m: m.group(0)[::-1],
+            displayed
+        )
+
+        return displayed[::-1]
+
     return displayed
 
 
