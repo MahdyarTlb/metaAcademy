@@ -130,6 +130,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.mtaacademy.ir',
     'http://mtaacademy.ir',
     'http://www.mtaacademy.ir',
+    'https://parse-x.ir',
+    'https://www.parse-x.ir',
+    'http://parse-x.ir',
+    'http://www.parse-x.ir',
 ]
 
 # ============================================
